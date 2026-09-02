@@ -2,18 +2,18 @@ import Link from "next/link";
 
 export default function HomePage() {
   const previewNavigation = [
-    "Dashboard",
-    "Leads",
-    "Contacts",
-    "Properties",
-    "Listings",
-    "Calendar",
-    "Showings",
-    "Tasks",
-    "Transactions",
-    "Documents",
-    "Finance"
-  ];
+    { label: "Dashboard", href: "/dashboard" },
+    { label: "Leads", href: "/leads" },
+    { label: "Contacts", href: "/contacts" },
+    { label: "Properties", href: "/properties" },
+    { label: "Listings", href: "/listings" },
+    { label: "Calendar", href: "/calendar" },
+    { label: "Showings", href: "/showings" },
+    { label: "Tasks", href: "/tasks" },
+    { label: "Transactions", href: "/transactions" },
+    { label: "Documents", href: "/documents" },
+    { label: "Finance", href: "/finance" }
+  ] as const;
 
   const features = [
     {
@@ -117,9 +117,13 @@ export default function HomePage() {
 
             <nav className="landing-preview-nav" aria-label="Product preview">
               {previewNavigation.map((item, index) => (
-                <span key={item} className={`landing-preview-nav-item ${index === 0 ? "landing-preview-nav-item-active" : ""}`}>
-                  {item}
-                </span>
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`landing-preview-nav-item ${index === 0 ? "landing-preview-nav-item-active" : ""}`}
+                >
+                  {item.label}
+                </Link>
               ))}
             </nav>
           </aside>

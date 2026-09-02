@@ -140,6 +140,15 @@ button {
   color: var(--text-secondary);
 }
 
+.eyebrow {
+  margin: 0 0 12px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .section-label {
   margin: 0 0 12px;
   color: var(--text-muted);

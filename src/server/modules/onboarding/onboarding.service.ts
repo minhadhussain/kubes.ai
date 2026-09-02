@@ -26,7 +26,11 @@ export async function createOrganization(input: { name: string; workspaceType: W
     .single();
 
   if (ownerRoleError || !ownerRole) {
-    throw new AppError("Owner role is not configured.", 500, "ROLE_LOOKUP_FAILED");
+    throw new AppError(
+      "Workspace roles are missing in Supabase. Run docs/seed-workspace-roles.sql in the Supabase SQL Editor, then try creating the organization again.",
+      500,
+      "ROLE_LOOKUP_FAILED"
+    );
   }
 
   const { data: slugData, error: slugError } = await supabase.rpc("ensure_unique_organization_slug", {

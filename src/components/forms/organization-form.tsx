@@ -8,29 +8,38 @@ export function OrganizationForm() {
   const [name, setName] = useState("");
   const [workspaceType, setWorkspaceType] = useState<"solo" | "team" | "brokerage">("solo");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
     setError(null);
+    setSuccess(null);
 
-    const response = await fetch("/api/onboarding/organization", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, workspaceType })
-    });
+    try {
+      const response = await fetch("/api/onboarding/organization", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, workspaceType })
+      });
 
-    const result = await response.json();
+      const contentType = response.headers.get("content-type") ?? "";
+      const payload = contentType.includes("application/json") ? await response.json() : null;
 
-    if (!response.ok) {
-      setError(result.error?.message ?? "Unable to create organization.");
+      if (!response.ok) {
+        setError(payload?.error?.message ?? "Unable to create organization.");
+        return;
+      }
+
+      setSuccess("Workspace created. Redirecting to your dashboard...");
+      router.push("/dashboard");
+      router.refresh();
+    } catch {
+      setError("Unable to create organization right now. Please check your connection and try again.");
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    router.push("/dashboard");
-    router.refresh();
   }
 
   return (
@@ -52,6 +61,7 @@ export function OrganizationForm() {
         </select>
       </div>
       {error ? <p className="message message-error">{error}</p> : null}
+      {success ? <p className="message message-success">{success}</p> : null}
       <button className="button" type="submit" disabled={submitting}>
         {submitting ? "Creating workspace..." : "Create workspace"}
       </button>
