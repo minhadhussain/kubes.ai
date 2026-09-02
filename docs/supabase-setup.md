@@ -7,6 +7,7 @@ The local web app is configured with the provided public Supabase project values
 - `NEXT_PUBLIC_APP_URL=http://localhost:3000`
 - `NEXT_PUBLIC_SUPABASE_URL=https://prhoyphnwdeghypdhaua.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` is configured locally
+- `SUPABASE_SERVICE_ROLE_KEY` is optional and can be added for server-side onboarding recovery tasks such as automatic role seeding
 
 ## Current status
 
@@ -20,6 +21,7 @@ The local web app is configured with the provided public Supabase project values
 - Ensure Supabase Auth redirect settings include:
   - `http://localhost:3000`
   - `http://localhost:3000/auth/callback`
+- Optionally add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local` so the server can seed required workspace roles automatically when missing
 
 ## Verification targets after schema application
 

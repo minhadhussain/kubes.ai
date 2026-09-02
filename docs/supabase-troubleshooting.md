@@ -14,6 +14,12 @@ Run the full schema from:
 
 - `supabase/migrations/0001_initial_schema.sql`
 
+### Optional automatic recovery
+
+If you add `SUPABASE_SERVICE_ROLE_KEY` to `.env.local`, the server can automatically seed the required workspace roles during onboarding when they are missing.
+
+This key is server-only and must never be exposed to the browser.
+
 If the rest of the schema already exists and only the role seed is missing, the minimum SQL needed is:
 
 ```sql

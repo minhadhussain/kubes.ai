@@ -1,8 +1,91 @@
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { AppError } from "@/server/shared/errors";
 import { requireCurrentUser } from "@/server/shared/auth";
 
 type WorkspaceType = "solo" | "team" | "brokerage";
+
+const WORKSPACE_ROLE_SEED = [
+  {
+    key: "owner",
+    name: "Owner",
+    description: "Workspace owner with full access"
+  },
+  {
+    key: "broker_admin",
+    name: "Broker Admin",
+    description: "Brokerage administrator"
+  },
+  {
+    key: "team_admin",
+    name: "Team Admin",
+    description: "Team manager with elevated access"
+  },
+  {
+    key: "agent",
+    name: "Agent",
+    description: "Standard producing agent"
+  },
+  {
+    key: "coordinator",
+    name: "Coordinator",
+    description: "Operations and transaction coordinator"
+  },
+  {
+    key: "assistant",
+    name: "Assistant",
+    description: "Support user with limited access"
+  }
+] as const;
+
+async function getOwnerRoleId() {
+  const supabase = await createSupabaseServerClient();
+
+  const { data: ownerRole } = await supabase.from("roles").select("id").eq("key", "owner").maybeSingle();
+
+  if (ownerRole) {
+    return ownerRole.id;
+  }
+
+  const adminClient = createSupabaseAdminClient();
+
+  if (!adminClient) {
+    throw new AppError(
+      "Workspace roles are missing in Supabase. Add SUPABASE_SERVICE_ROLE_KEY to .env.local for automatic seeding, or run docs/seed-workspace-roles.sql in the Supabase SQL Editor.",
+      500,
+      "ROLE_LOOKUP_FAILED"
+    );
+  }
+
+  const { error: seedError } = await adminClient.from("roles").upsert(WORKSPACE_ROLE_SEED, {
+    onConflict: "key",
+    ignoreDuplicates: false
+  });
+
+  if (seedError) {
+    throw new AppError(
+      `Unable to seed workspace roles automatically: ${seedError.message}`,
+      500,
+      "ROLE_SEED_FAILED"
+    );
+  }
+
+  const { data: seededOwnerRole, error: seededOwnerRoleError } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("key", "owner")
+    .single();
+
+  if (seededOwnerRoleError || !seededOwnerRole) {
+    throw new AppError(
+      "Workspace roles were seeded, but the owner role is still unavailable to the current session. Refresh and try again.",
+      500,
+      "ROLE_LOOKUP_FAILED"
+    );
+  }
+
+  return seededOwnerRole.id;
+}
 
 export async function createOrganization(input: { name: string; workspaceType: WorkspaceType }) {
   const user = await requireCurrentUser();
@@ -19,19 +102,7 @@ export async function createOrganization(input: { name: string; workspaceType: W
     throw new AppError("This user already belongs to an active organization.", 409, "ORGANIZATION_EXISTS");
   }
 
-  const { data: ownerRole, error: ownerRoleError } = await supabase
-    .from("roles")
-    .select("id")
-    .eq("key", "owner")
-    .single();
-
-  if (ownerRoleError || !ownerRole) {
-    throw new AppError(
-      "Workspace roles are missing in Supabase. Run docs/seed-workspace-roles.sql in the Supabase SQL Editor, then try creating the organization again.",
-      500,
-      "ROLE_LOOKUP_FAILED"
-    );
-  }
+  const ownerRoleId = await getOwnerRoleId();
 
   const { data: slugData, error: slugError } = await supabase.rpc("ensure_unique_organization_slug", {
     base_name: input.name
@@ -59,7 +130,7 @@ export async function createOrganization(input: { name: string; workspaceType: W
   const { error: memberError } = await supabase.from("organization_members").insert({
     organization_id: organization.id,
     user_id: user.id,
-    role_id: ownerRole.id,
+    role_id: ownerRoleId,
     status: "active"
   });
 

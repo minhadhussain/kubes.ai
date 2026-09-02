@@ -6,6 +6,10 @@ const publicEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1)
 });
 
+const serverEnvSchema = z.object({
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1)
+});
+
 export function getPublicEnv() {
   const result = publicEnvSchema.safeParse({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -30,4 +34,16 @@ export function requirePublicEnv() {
   }
 
   return env;
+}
+
+export function getServerEnv() {
+  const result = serverEnvSchema.safeParse({
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
+  });
+
+  if (!result.success) {
+    return null;
+  }
+
+  return result.data;
 }
