@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 
-import { appNavigation } from "@/config/navigation";
+import { SidebarNav } from "@/components/navigation/sidebar-nav";
+import { TopBar } from "@/components/navigation/top-bar";
 
 type AppShellProps = {
   organizationName: string;
@@ -13,27 +14,27 @@ export function AppShell({ organizationName, userName, children }: AppShellProps
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <div>
-          <p className="eyebrow">Real Estate Agent OS</p>
+        <div className="sidebar-brand">
+          <p className="section-label section-label-accent">Kubes.ai</p>
           <h1>{organizationName}</h1>
-          <p className="muted">Built for the full agent workflow.</p>
+          <p className="sidebar-copy">Mission control for the full agent workflow.</p>
         </div>
 
-        <nav className="nav-grid" aria-label="Primary">
-          {appNavigation.map((item) => (
-            <Link key={item.href} href={item.href} className="nav-link">
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        <SidebarNav />
 
         <div className="sidebar-footer">
-          <p className="muted">Signed in as</p>
+          <p className="section-label">Workspace user</p>
           <strong>{userName}</strong>
+          <Link href="/settings" className="inline-link">
+            Configure workspace
+          </Link>
         </div>
       </aside>
 
-      <main className="content">{children}</main>
+      <main className="content">
+        <TopBar organizationName={organizationName} userName={userName} />
+        {children}
+      </main>
     </div>
   );
 }

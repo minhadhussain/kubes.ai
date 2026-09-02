@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 
 import "@/app/globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-serif",
+const display = Space_Grotesk({
+  variable: "--font-display",
   subsets: ["latin"]
 });
 
-const manrope = Manrope({
-  variable: "--font-sans",
+const body = IBM_Plex_Sans({
+  variable: "--font-body",
   subsets: ["latin"]
 });
 
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${manrope.variable}`}>
+      <body className={`${display.variable} ${body.variable}`}>
         <div className="page-frame">{children}</div>
       </body>
     </html>

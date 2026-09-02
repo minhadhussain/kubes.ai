@@ -1,15 +1,24 @@
 import Link from "next/link";
 
+import { StatusBadge } from "@/components/ui/status-badge";
+import { WorkflowStep } from "@/components/ui/workflow-step";
+
 export default function HomePage() {
   return (
     <main className="marketing-layout">
       <section className="marketing-card">
         <div className="marketing-copy">
-          <p className="eyebrow">Production-ready foundation</p>
-          <h1>Run the full real estate workflow from first lead to post-close follow-up.</h1>
+          <p className="section-label section-label-accent">Real estate operating system</p>
+          <h1>
+            Manage your
+            <br />
+            real estate
+            <br />
+            workflow <span className="text-accent">as a system.</span>
+          </h1>
           <p>
-            This application is structured as an operating system for agents, not a disconnected admin shell. The current build
-            establishes the production foundation for auth, organizations, RLS, and the command-center dashboard.
+            Built as a control layer for agents who need leads, contacts, showings, offers, transactions, documents, and
+            commissions connected in one dark, technical workspace.
           </p>
 
           <div className="helper-row">
@@ -23,21 +32,21 @@ export default function HomePage() {
 
           <ul className="marketing-list">
             <li>Single source of truth across contacts, leads, properties, offers, and transactions</li>
-            <li>Supabase-backed auth, storage, PostgreSQL schema, and RLS tenant isolation</li>
-            <li>Module-by-module implementation sequence aligned to real agent workflows</li>
+            <li>Supabase-backed auth, storage, schema, and tenant isolation</li>
+            <li>Workflow-first system design instead of disconnected CRM screens</li>
           </ul>
         </div>
 
         <div className="marketing-side">
           <div>
-            <p className="eyebrow">Core workflow</p>
-            <p>
-              Lead {"->"} Contact {"->"} Client {"->"} Property {"->"} Showing {"->"} Offer {"->"} Transaction {"->"} Closing {"->"} Commission {"->"} Follow-up
-            </p>
+            <p className="section-label">System status</p>
+            <StatusBadge label="Foundation online" tone="accent" />
           </div>
-          <div>
-            <p className="eyebrow">MVP progress</p>
-            <p>Auth, onboarding, dashboard foundation, schema, and app shell are in place for iterative delivery.</p>
+
+          <div className="workflow-grid workflow-grid-marketing">
+            <WorkflowStep index="01" title="Lead intake" description="Capture and qualify prospects without spreadsheet drift." meta="CRM · FORMS · PIPELINE" />
+            <WorkflowStep index="02" title="Property motion" description="Track listings, tours, and recommendations inside one system." meta="PROPERTY · SHOWINGS · FEEDBACK" />
+            <WorkflowStep index="03" title="Deal execution" description="Move offers into transactions, deadlines, and commission outcomes." meta="OFFER · CLOSE · FINANCE" />
           </div>
         </div>
       </section>
