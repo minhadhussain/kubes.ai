@@ -2,13 +2,13 @@
 
 ## Visual direction
 
-The frontend uses a dark operating-system aesthetic inspired by Kubes and adapted to real estate operations.
+The frontend uses a dark premium SaaS aesthetic for real estate operations. The interface keeps the black/gray palette and green accent, but avoids blueprint or Kubes-like marketing composition.
 
-- Background-first interface with subtle tonal layering
+- Product-first layouts with practical information density
 - Green accent used sparingly for state, focus, metrics, and primary actions
 - Thin borders, compact labels, and structured layouts
-- Blueprint-style grid surfaces for dashboard, analytics, and workflow modules
-- Strong uppercase metadata paired with large, technical headings
+- Landing page built as a SaaS product site with centered hero and realistic product preview
+- Operational screens use cards, tables, lists, and workflow surfaces rather than marketing diagrams
 
 ## Core tokens
 
@@ -23,10 +23,10 @@ Defined globally in `src/app/globals.css`.
 
 ## Typography
 
-- Display font: `Space Grotesk`
-- Interface font: `IBM Plex Sans`
-- Large page titles use dense line-height and high weight
-- Small labels use uppercase tracking to preserve the technical control-layer aesthetic
+- Display font: `Satoshi`
+- Interface font: `Satoshi`
+- Hero and section titles use readable SaaS-scale typography rather than giant editorial composition
+- Small labels use restrained uppercase tracking only where useful
 
 ## Component foundation
 
@@ -45,10 +45,17 @@ Reusable UI components now cover the first frontend slice:
 - `WorkflowStep`
 - `ModulePlaceholder`
 
+## Landing page principles
+
+- Centered hero with practical heading scale
+- Large product preview showing a realistic application dashboard
+- Feature grid, workflow strip, value section, AI summaries, and clear CTA/footer structure
+- No blueprint panels, numbered workflow cards, or split hero composition
+
 ## Dashboard principles
 
-- Present the workspace as mission control rather than a card-heavy CRM
-- Show operational state, attention items, workflow blueprint, and timeline structure
+- Present the workspace as a productivity dashboard for agents
+- Emphasize actionable information, operational data, and clean hierarchy
 - Keep color restrained; green highlights only meaningful values and states
 
 ## Responsive behavior
