@@ -1,20 +1,6 @@
 import Link from "next/link";
 
 export default function HomePage() {
-  const previewNavigation = [
-    { label: "Dashboard", href: "/dashboard" },
-    { label: "Leads", href: "/leads" },
-    { label: "Contacts", href: "/contacts" },
-    { label: "Properties", href: "/properties" },
-    { label: "Listings", href: "/listings" },
-    { label: "Calendar", href: "/calendar" },
-    { label: "Showings", href: "/showings" },
-    { label: "Tasks", href: "/tasks" },
-    { label: "Transactions", href: "/transactions" },
-    { label: "Documents", href: "/documents" },
-    { label: "Finance", href: "/finance" }
-  ] as const;
-
   const features = [
     {
       title: "Lead Management",
@@ -43,6 +29,21 @@ export default function HomePage() {
   ];
 
   const workflow = ["Lead", "Client", "Property", "Showing", "Offer", "Transaction", "Closed"];
+
+  const productPillars = [
+    {
+      title: "Lead capture and follow-up",
+      text: "Collect enquiries, organize conversations, and make sure every prospect gets a timely next step."
+    },
+    {
+      title: "Client and property coordination",
+      text: "Keep buyer needs, seller expectations, property details, and internal notes connected in one place."
+    },
+    {
+      title: "Scheduling and execution",
+      text: "Manage showings, meetings, tasks, and transaction milestones without juggling separate tools."
+    }
+  ];
 
   const aiCards = [
     {
@@ -108,88 +109,46 @@ export default function HomePage() {
       </section>
 
       <section className="landing-section" id="product">
-        <div className="landing-preview">
-          <aside className="landing-preview-sidebar">
-            <div>
-              <p className="landing-preview-kicker">Workspace</p>
-              <strong>Agent OS</strong>
-            </div>
-
-            <nav className="landing-preview-nav" aria-label="Product preview">
-              {previewNavigation.map((item, index) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`landing-preview-nav-item ${index === 0 ? "landing-preview-nav-item-active" : ""}`}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-          </aside>
-
+        <div className="landing-preview landing-preview-simple">
           <div className="landing-preview-main">
             <div className="landing-preview-top">
               <div>
-                <p className="landing-preview-kicker">Dashboard</p>
-                <h2>Good morning, Alex</h2>
-                <p>Here&apos;s what needs attention today.</p>
+                <h2>Built for the full real estate workflow.</h2>
+                <p>
+                  The landing page now stays focused on what the platform does. Detailed dashboard views remain inside the
+                  app experience after sign-in.
+                </p>
               </div>
             </div>
 
             <div className="landing-preview-metrics">
               <article className="landing-preview-card">
-                <span>24</span>
-                <p>Leads</p>
+                <span>CRM</span>
+                <p>Leads and contacts</p>
               </article>
               <article className="landing-preview-card">
-                <span>6</span>
-                <p>Showings</p>
+                <span>Ops</span>
+                <p>Tasks and calendar</p>
               </article>
               <article className="landing-preview-card">
-                <span>8</span>
-                <p>Transactions</p>
+                <span>Deals</span>
+                <p>Listings and transactions</p>
               </article>
               <article className="landing-preview-card landing-preview-card-accent">
-                <span>Rs 4.8L</span>
-                <p>Expected</p>
+                <span>AI</span>
+                <p>Smarter follow-through</p>
               </article>
             </div>
 
             <div className="landing-preview-content">
-              <section className="landing-preview-panel">
-                <div className="landing-preview-panel-header">
-                  <h3>Today&apos;s Schedule</h3>
-                </div>
-                <ul className="landing-preview-list">
-                  <li>
-                    <strong>09:30</strong>
-                    <span>Client call</span>
-                  </li>
-                  <li>
-                    <strong>11:00</strong>
-                    <span>Property showing</span>
-                  </li>
-                  <li>
-                    <strong>14:30</strong>
-                    <span>Seller meeting</span>
-                  </li>
-                </ul>
-              </section>
-
-              <section className="landing-preview-panel">
-                <div className="landing-preview-panel-header">
-                  <h3>Lead Pipeline</h3>
-                </div>
-                <div className="landing-preview-pipeline">
-                  {["New", "Contacted", "Qualified", "Active", "Offer", "Closed"].map((stage, index) => (
-                    <div key={stage} className="landing-preview-stage">
-                      <span>{stage}</span>
-                      {index < 5 ? <i aria-hidden="true" /> : null}
-                    </div>
-                  ))}
-                </div>
-              </section>
+              {productPillars.map((pillar) => (
+                <section key={pillar.title} className="landing-preview-panel">
+                  <div className="landing-preview-panel-header">
+                    <h3>{pillar.title}</h3>
+                  </div>
+                  <p>{pillar.text}</p>
+                </section>
+              ))}
             </div>
           </div>
         </div>
@@ -216,7 +175,7 @@ export default function HomePage() {
           <h2>From lead to closing.</h2>
         </div>
 
-        <div className="landing-workflow">
+        <div className="landing-workflow" aria-label="Product journey">
           {workflow.map((step, index) => (
             <div key={step} className="landing-workflow-step">
               <span>{step}</span>

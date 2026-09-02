@@ -280,6 +280,10 @@ button {
   overflow: hidden;
 }
 
+.landing-preview-simple {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .landing-preview-sidebar {
   padding: 22px 18px;
   background: var(--background-secondary);
@@ -313,6 +317,11 @@ button {
   gap: 18px;
 }
 
+.landing-preview-top {
+  display: grid;
+  gap: 10px;
+}
+
 .landing-preview-top h2,
 .landing-feature-card h3,
 .landing-preview-panel h3,
@@ -325,6 +334,11 @@ button {
 .landing-preview-top p,
 .landing-feature-card p,
 .landing-ai-card p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+
+.landing-preview-panel p {
   margin: 0;
   color: var(--text-secondary);
 }
@@ -402,6 +416,17 @@ button {
   gap: 10px;
 }
 
+.landing-workflow {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(120px, 1fr);
+  align-items: center;
+  gap: 18px;
+  overflow-x: auto;
+  padding: 10px 2px 6px;
+  scrollbar-width: thin;
+}
+
 .landing-preview-stage,
 .landing-workflow-step {
   display: inline-flex;
@@ -416,6 +441,35 @@ button {
   width: 24px;
   height: 1px;
   background: var(--border-strong);
+}
+
+.landing-workflow-step {
+  position: relative;
+  justify-content: center;
+  min-height: 72px;
+  padding: 0 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+  white-space: nowrap;
+}
+
+.landing-workflow-step span {
+  position: relative;
+  z-index: 1;
+}
+
+.landing-workflow-step i {
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 9px);
+  width: 18px;
+  transform: translateY(-50%);
+  opacity: 0.7;
+}
+
+.landing-workflow-step:last-child {
+  border-color: rgba(0, 214, 107, 0.2);
 }
 
 .landing-section-heading {
@@ -1092,6 +1146,17 @@ button {
 
   .workflow-step {
     grid-template-columns: 40px 1fr;
+  }
+
+  .landing-workflow {
+    grid-auto-columns: minmax(150px, 1fr);
+    gap: 14px;
+    padding-bottom: 10px;
+  }
+
+  .landing-workflow-step {
+    min-height: 64px;
+    padding: 0 16px;
   }
 
   .data-table {

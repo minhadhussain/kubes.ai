@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 type FormState = {
@@ -10,7 +10,7 @@ type FormState = {
 };
 
 export function LoginForm() {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState<FormState>({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -34,8 +34,9 @@ export function LoginForm() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    const redirectPath = searchParams.get("next") ?? "/dashboard";
+
+    window.location.assign(redirectPath);
   }
 
   return (

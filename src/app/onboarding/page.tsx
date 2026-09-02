@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { OrganizationForm } from "@/components/forms/organization-form";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getOrCreateCurrentUserProfile } from "@/server/shared/user-profile";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,7 @@ export default async function OnboardingPage() {
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("user_profiles")
-    .select("default_organization_id")
-    .eq("id", user.id)
-    .single();
+  const profile = await getOrCreateCurrentUserProfile(user);
 
   if (profile?.default_organization_id) {
     redirect("/dashboard");

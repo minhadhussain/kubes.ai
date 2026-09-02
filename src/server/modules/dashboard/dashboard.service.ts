@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { requireCurrentUser } from "@/server/shared/auth";
 import { AppError } from "@/server/shared/errors";
+import { getOrCreateCurrentUserProfile } from "@/server/shared/user-profile";
 
 type DashboardSummary = {
   organization: {
@@ -28,15 +29,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   const user = await requireCurrentUser();
   const supabase = await createSupabaseServerClient();
 
-  const { data: profile, error: profileError } = await supabase
-    .from("user_profiles")
-    .select("default_organization_id")
-    .eq("id", user.id)
-    .single();
-
-  if (profileError) {
-    throw new AppError("Unable to load user profile.", 500, "PROFILE_LOAD_FAILED");
-  }
+  const profile = await getOrCreateCurrentUserProfile(user);
 
   if (!profile.default_organization_id) {
     throw new AppError("No organization has been configured for this user.", 400, "NO_ORGANIZATION");
