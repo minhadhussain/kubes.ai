@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { ZodError } from "zod";
 
 import { AppError, isAppError } from "@/server/shared/errors";
 
@@ -7,6 +8,20 @@ export function ok<T>(data: T, init?: ResponseInit) {
 }
 
 export function fail(error: unknown) {
+  if (error instanceof ZodError) {
+    const issue = error.issues[0];
+
+    return NextResponse.json(
+      {
+        error: {
+          code: "VALIDATION_ERROR",
+          message: issue?.message ?? "Request validation failed."
+        }
+      },
+      { status: 400 }
+    );
+  }
+
   if (isAppError(error)) {
     return NextResponse.json(
       {

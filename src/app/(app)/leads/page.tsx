@@ -1,11 +1,10 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { LeadsWorkspace } from "@/components/leads/leads-workspace";
+import { listLeads } from "@/server/modules/leads/leads.service";
 
-export default function LeadsPage() {
-  return (
-    <ModulePlaceholder
-      title="Lead pipeline"
-      description="This module will deliver qualification, scoring, follow-up due views, and conversion into client records backed by the real Supabase schema."
-      priority="P0"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function LeadsPage() {
+  const leads = await listLeads();
+
+  return <LeadsWorkspace initialLeads={leads} />;
 }

@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getDashboardAiSnapshot } from "@/server/modules/dashboard/dashboard-ai.service";
 import { requireCurrentUser } from "@/server/shared/auth";
 import { AppError } from "@/server/shared/errors";
 import { getOrCreateCurrentUserProfile } from "@/server/shared/user-profile";
@@ -23,6 +24,22 @@ type DashboardSummary = {
     pendingOffers: number;
     expectedCommission: number;
   };
+  aiSnapshot: {
+    generatedAt: string;
+    approvalStatus: string;
+    actionStatus: string;
+    items: Array<{
+      priority: "high" | "medium" | "low";
+      entityType: "lead" | "task" | "transaction" | "contact";
+      entityId: string;
+      title: string;
+      reason: string;
+      recommendedAction: string;
+      ctaLabel: string;
+      confidence: number;
+      sources: string[];
+    }>;
+  } | null;
 };
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
@@ -42,7 +59,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   endOfDay.setHours(23, 59, 59, 999);
   const nowIso = new Date().toISOString();
 
-  const [organizationResult, appointmentsResult, showingsResult, tasksDueResult, overdueTasksResult, leadsResult, clientsResult, listingsResult, transactionsResult, offersResult, commissionsResult] =
+  const [organizationResult, appointmentsResult, showingsResult, tasksDueResult, overdueTasksResult, leadsResult, clientsResult, listingsResult, transactionsResult, offersResult, commissionsResult, aiSnapshot] =
     await Promise.all([
       supabase.from("organizations").select("id, name, slug").eq("id", organizationId).single(),
       supabase
@@ -95,7 +112,8 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         .select("id", { count: "exact", head: true })
         .eq("organization_id", organizationId)
         .in("status", ["sent", "viewed", "countered"]),
-      supabase.from("commissions").select("expected_income").eq("organization_id", organizationId)
+      supabase.from("commissions").select("expected_income").eq("organization_id", organizationId),
+      getDashboardAiSnapshot()
     ]);
 
   if (organizationResult.error || !organizationResult.data) {
@@ -120,6 +138,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       activeTransactions: transactionsResult.count ?? 0,
       pendingOffers: offersResult.count ?? 0,
       expectedCommission
-    }
+    },
+    aiSnapshot
   };
 }

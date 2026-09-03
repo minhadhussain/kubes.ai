@@ -20,7 +20,11 @@ export function AppShell({ organizationName, userName, children }: AppShellProps
           <p className="sidebar-copy">Mission control for the full agent workflow.</p>
         </div>
 
-        <SidebarNav />
+        <div className="sidebar-nav-wrap">
+          <SidebarNav />
+        </div>
+
+        <div className="sidebar-spacer" aria-hidden="true" />
 
         <div className="sidebar-footer">
           <p className="section-label">Workspace user</p>

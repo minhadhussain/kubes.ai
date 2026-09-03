@@ -1,11 +1,5 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { WorkspaceModuleDataPage } from "@/components/workspace/workspace-module-data";
 
 export default function ShowingsPage() {
-  return (
-    <ModulePlaceholder
-      title="Showing workflow"
-      description="Showings will connect agents, clients, properties, schedule state, and post-showing feedback so tours drive the next action automatically."
-      priority="P0"
-    />
-  );
+  return <WorkspaceModuleDataPage moduleKey="showings" />;
 }

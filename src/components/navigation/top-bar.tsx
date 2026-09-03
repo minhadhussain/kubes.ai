@@ -27,8 +27,8 @@ export function TopBar({ organizationName, userName }: TopBarProps) {
         <Link href="/leads" className="button-secondary button-compact">
           Add lead
         </Link>
-        <Link href="/showings" className="button button-compact">
-          Book showing
+        <Link href="/tasks" className="button button-compact">
+          Open tasks
         </Link>
       </div>
     </div>

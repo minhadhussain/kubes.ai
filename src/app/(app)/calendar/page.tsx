@@ -1,11 +1,5 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { WorkspaceModuleDataPage } from "@/components/workspace/workspace-module-data";
 
 export default function CalendarPage() {
-  return (
-    <ModulePlaceholder
-      title="Unified calendar"
-      description="Appointments, deadlines, showings, calls, and closing events will converge into a single schedule linked to contacts, properties, and transactions."
-      priority="P0"
-    />
-  );
+  return <WorkspaceModuleDataPage moduleKey="calendar" />;
 }

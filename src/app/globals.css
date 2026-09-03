@@ -712,11 +712,24 @@ button {
 }
 
 .sidebar {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
   gap: 24px;
-  justify-content: space-between;
+  align-content: start;
+  min-height: 100%;
   background: var(--background-secondary);
+}
+
+.sidebar-brand {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.sidebar-brand .section-label,
+.sidebar-copy,
+.sidebar-brand h1 {
+  margin: 0;
 }
 
 .sidebar-brand h1 {
@@ -729,6 +742,16 @@ button {
 .sidebar-nav {
   display: grid;
   gap: 4px;
+  align-content: start;
+}
+
+.sidebar-nav-wrap {
+  display: grid;
+  align-content: start;
+}
+
+.sidebar-spacer {
+  min-height: 0;
 }
 
 .sidebar-link {
@@ -769,6 +792,7 @@ button {
   gap: 8px;
   padding-top: 16px;
   border-top: 1px solid var(--border-subtle);
+  align-content: start;
 }
 
 .content {
@@ -1040,9 +1064,90 @@ button {
   color: var(--text-primary);
 }
 
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.insight-card {
+  display: grid;
+  gap: 10px;
+  min-height: 180px;
+  padding: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--background-secondary);
+}
+
+.insight-card h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.insight-card p {
+  margin: 0;
+}
+
+.compact-stack {
+  gap: 12px;
+}
+
+.form-grid-two,
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.table-link-button {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.table-link-button:hover {
+  color: var(--accent);
+}
+
+.ai-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ai-priority-card {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.ai-priority-card h3,
+.ai-priority-head p {
+  margin: 0;
+}
+
+.ai-priority-card p {
+  margin: 0;
+}
+
+.ai-priority-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
 @media (max-width: 1200px) {
   .landing-feature-grid,
   .landing-ai-grid,
+  .insight-grid,
+  .ai-grid,
   .metrics-grid,
   .metrics-grid-secondary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1126,6 +1231,8 @@ button {
   .landing-preview-metrics,
   .landing-feature-grid,
   .landing-ai-grid,
+  .insight-grid,
+  .ai-grid,
   .landing-nav,
   .landing-header-actions,
   .landing-hero-actions,
@@ -1146,6 +1253,11 @@ button {
 
   .workflow-step {
     grid-template-columns: 40px 1fr;
+  }
+
+  .form-grid-two,
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 
   .landing-workflow {

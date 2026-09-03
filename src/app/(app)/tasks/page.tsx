@@ -1,11 +1,10 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { TasksWorkspace } from "@/components/tasks/tasks-workspace";
+import { listTasks } from "@/server/modules/tasks/tasks.service";
 
-export default function TasksPage() {
-  return (
-    <ModulePlaceholder
-      title="Task engine"
-      description="Manual and automated tasks will be linked to contacts, properties, and transactions, with due dates and assignment driving the daily dashboard."
-      priority="P0"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function TasksPage() {
+  const tasks = await listTasks();
+
+  return <TasksWorkspace initialTasks={tasks} />;
 }

@@ -1,11 +1,10 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { ContactsWorkspace } from "@/components/contacts/contacts-workspace";
+import { listContacts } from "@/server/modules/contacts/contacts.service";
 
-export default function ContactsPage() {
-  return (
-    <ModulePlaceholder
-      title="Contact workspace"
-      description="Contacts will serve as the system anchor for communication history, requirements, notes, tags, and assigned ownership across the rest of the workflow."
-      priority="P0"
-    />
-  );
+export const dynamic = "force-dynamic";
+
+export default async function ContactsPage() {
+  const contacts = await listContacts();
+
+  return <ContactsWorkspace initialContacts={contacts} />;
 }

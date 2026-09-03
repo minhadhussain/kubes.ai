@@ -1,11 +1,5 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { WorkspaceModuleDataPage } from "@/components/workspace/workspace-module-data";
 
 export default function DocumentsPage() {
-  return (
-    <ModulePlaceholder
-      title="Document management"
-      description="Supabase Storage-backed uploads, previews, and metadata relationships for records such as contacts, properties, offers, transactions, and receipts."
-      priority="P0"
-    />
-  );
+  return <WorkspaceModuleDataPage moduleKey="documents" />;
 }

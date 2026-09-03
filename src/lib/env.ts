@@ -10,6 +10,13 @@ const serverEnvSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1)
 });
 
+const aiEnvSchema = z.object({
+  AI_PROVIDER: z.enum(["openai", "deepseek"]),
+  AI_API_KEY: z.string().min(1),
+  AI_MODEL: z.string().min(1),
+  AI_BASE_URL: z.string().url()
+});
+
 export function getPublicEnv() {
   const result = publicEnvSchema.safeParse({
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -46,4 +53,31 @@ export function getServerEnv() {
   }
 
   return result.data;
+}
+
+export function getAiEnv() {
+  const result = aiEnvSchema.safeParse({
+    AI_PROVIDER: process.env.AI_PROVIDER,
+    AI_API_KEY: process.env.AI_API_KEY,
+    AI_MODEL: process.env.AI_MODEL,
+    AI_BASE_URL: process.env.AI_BASE_URL
+  });
+
+  if (!result.success) {
+    return null;
+  }
+
+  return result.data;
+}
+
+export function requireAiEnv() {
+  const env = getAiEnv();
+
+  if (!env) {
+    throw new Error(
+      "Missing AI environment variables. Set AI_PROVIDER, AI_API_KEY, AI_MODEL, and AI_BASE_URL on the server."
+    );
+  }
+
+  return env;
 }

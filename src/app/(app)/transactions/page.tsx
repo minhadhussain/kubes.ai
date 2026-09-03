@@ -1,11 +1,5 @@
-import { ModulePlaceholder } from "@/components/module-placeholder";
+import { WorkspaceModuleDataPage } from "@/components/workspace/workspace-module-data";
 
 export default function TransactionsPage() {
-  return (
-    <ModulePlaceholder
-      title="Transaction workspace"
-      description="This module will manage stage progression, checklist tasks, documents, participants, risks, and commission context from accepted offer through closing."
-      priority="P0"
-    />
-  );
+  return <WorkspaceModuleDataPage moduleKey="transactions" />;
 }

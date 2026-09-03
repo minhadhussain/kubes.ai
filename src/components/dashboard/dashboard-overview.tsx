@@ -1,10 +1,10 @@
+import { AiPriorityPanel } from "@/components/dashboard/ai-priority-panel";
 import { DataTable } from "@/components/ui/data-table";
 import { Metric } from "@/components/ui/metric";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { SystemPanel } from "@/components/ui/system-panel";
 import { Timeline, type TimelineItem } from "@/components/ui/timeline";
-import { WorkflowStep } from "@/components/ui/workflow-step";
 
 type AttentionRow = {
   item: string;
@@ -33,7 +33,22 @@ type DashboardOverviewProps = {
       pendingOffers: number;
       expectedCommission: number;
     };
+    aiSnapshot: {
+      generatedAt: string;
+      items: Array<{
+        priority: "high" | "medium" | "low";
+        entityType: "lead" | "task" | "transaction" | "contact";
+        entityId: string;
+        title: string;
+        reason: string;
+        recommendedAction: string;
+        ctaLabel: string;
+        confidence: number;
+        sources: string[];
+      }>;
+    } | null;
   };
+  onRefreshAiPriorities?: () => Promise<void>;
 };
 
 function formatCurrency(value: number) {
@@ -44,7 +59,7 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-export function DashboardOverview({ data }: DashboardOverviewProps) {
+export function DashboardOverview({ data, onRefreshAiPriorities }: DashboardOverviewProps) {
   const activityItems: TimelineItem[] = [
     {
       time: "Now",
@@ -150,13 +165,8 @@ export function DashboardOverview({ data }: DashboardOverviewProps) {
       </section>
 
       <section className="dashboard-span-7" id="pipeline">
-        <SystemPanel label="Pipeline" title="Workflow blueprint" grid>
-          <div className="workflow-grid">
-            <WorkflowStep index="01" title="Lead intake" description={`${data.business.newLeads} fresh opportunities waiting to be contacted and scored.`} meta="CRM · INBOUND · RESPONSE" />
-            <WorkflowStep index="02" title="Client motion" description={`${data.business.activeClients} active clients currently mapped to search, listing, or execution work.`} meta="PROFILE · INTENT · MATCHING" />
-            <WorkflowStep index="03" title="Offer pressure" description={`${data.business.pendingOffers} open negotiations require review, countering, or acceptance decisions.`} meta="TERMS · FINANCING · NEGOTIATION" />
-            <WorkflowStep index="04" title="Transaction execution" description={`${data.business.activeTransactions} live deals are moving through compliance, deadlines, and closing prep.`} meta="DEAL · CHECKLIST · CLOSING" />
-          </div>
+        <SystemPanel label="AI today" title="Recommended next actions" grid>
+          <AiPriorityPanel snapshot={data.aiSnapshot} onRefresh={onRefreshAiPriorities} />
         </SystemPanel>
       </section>
 

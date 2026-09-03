@@ -1,3 +1,4 @@
+import { DashboardOverviewClient } from "@/components/dashboard/dashboard-overview-client";
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
 import { OnboardingCta } from "@/components/dashboard/onboarding-cta";
 import { getDashboardSummary } from "@/server/modules/dashboard/dashboard.service";
@@ -7,7 +8,7 @@ export default async function DashboardPage() {
   try {
     const data = await getDashboardSummary();
 
-    return <DashboardOverview data={data} />;
+    return <DashboardOverviewClient initialData={data} />;
   } catch (error) {
     if (error instanceof AppError && error.code === "NO_ORGANIZATION") {
       return <OnboardingCta />;
