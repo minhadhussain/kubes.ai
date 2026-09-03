@@ -112,3 +112,73 @@ Confirmed results:
 
 - exercise one real in-app AI route such as `/api/ai/next-actions` or a lead AI endpoint to validate full route-level behavior against authenticated data
 - if more Azure-specific requirements are introduced later, keep the provider layer aligned with the Azure OpenAI v1 Responses API contract
+
+## Additional implementation pass - seeded workflow and floating copilot
+
+After the Azure support work, a second implementation pass added the next connected real-estate product layer using centralized realistic development seed data.
+
+### New workflow modules implemented
+
+- Properties
+- Listings
+- Showings
+- Transactions
+- Documents
+- Finance
+
+### Seed data approach
+
+- centralized source: `src/server/dev-data/real-estate-dev-data.ts`
+- seeded records include connected contacts, leads, properties, listings, showings, offers, transactions, tasks, documents, and activities
+- the UI consumes service layers rather than importing raw seed arrays directly into page components
+- this keeps later replacement with live Supabase data straightforward
+
+### Floating copilot added
+
+- a persistent floating Kubes AI button and chat panel were added to the authenticated shell
+- the copilot is available across workspace pages
+- current-session conversation state is maintained client-side
+- all AI requests run through `/api/ai/copilot`
+- the copilot remains server-side and uses the existing AI provider abstraction
+
+### Seeded workflow pages now implemented
+
+- `src/app/(app)/properties/page.tsx`
+- `src/app/(app)/listings/page.tsx`
+- `src/app/(app)/showings/page.tsx`
+- `src/app/(app)/transactions/page.tsx`
+- `src/app/(app)/documents/page.tsx`
+- `src/app/(app)/finance/page.tsx`
+
+### Copilot context coverage extended
+
+The copilot can now resolve context for:
+
+- leads
+- contacts
+- tasks
+- properties
+- listings
+- showings
+- transactions
+- documents
+- finance summaries
+
+### Relationship validation added
+
+- `src/server/dev-data/real-estate-dev-data.test.ts`
+- verifies property, listing, showing, offer, transaction, and document relationship integrity
+- verifies buyer -> showing -> offer -> transaction continuity
+
+### Validation completed for this pass
+
+```bash
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+### Current limitation
+
+- the new workflow modules intentionally use realistic centralized seed data during product validation and are not yet connected to live Supabase records
