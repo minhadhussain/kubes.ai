@@ -18,9 +18,15 @@ export default async function ProtectedAppLayout({ children }: Readonly<{ childr
 
   const profile = await getOrCreateCurrentUserProfile(user);
 
-  const { data: organization } = profile?.default_organization_id
-    ? await supabase.from("organizations").select("name").eq("id", profile.default_organization_id).single()
-    : { data: null };
+  if (!profile.default_organization_id) {
+    redirect("/onboarding");
+  }
+
+  const { data: organization } = await supabase
+    .from("organizations")
+    .select("name")
+    .eq("id", profile.default_organization_id)
+    .single();
 
   return (
     <AppShell organizationName={organization?.name ?? "Workspace"} userName={profile?.full_name ?? user.email ?? "Agent"}>

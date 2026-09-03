@@ -11,7 +11,7 @@ const serverEnvSchema = z.object({
 });
 
 const aiEnvSchema = z.object({
-  AI_PROVIDER: z.enum(["openai", "deepseek"]),
+  AI_PROVIDER: z.enum(["openai", "deepseek", "azure"]),
   AI_API_KEY: z.string().min(1),
   AI_MODEL: z.string().min(1),
   AI_BASE_URL: z.string().url()

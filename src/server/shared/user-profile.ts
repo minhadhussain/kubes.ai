@@ -35,7 +35,6 @@ export async function getOrCreateCurrentUserProfile(user: User): Promise<Current
     .maybeSingle();
 
   if (profileError) {
-    console.error("Unable to load user profile.", profileError);
     return fallbackProfile;
   }
 
@@ -53,7 +52,6 @@ export async function getOrCreateCurrentUserProfile(user: User): Promise<Current
   );
 
   if (profileInitError) {
-    console.error("Unable to initialize user profile.", profileInitError);
     return fallbackProfile;
   }
 
@@ -64,10 +62,6 @@ export async function getOrCreateCurrentUserProfile(user: User): Promise<Current
     .maybeSingle();
 
   if (initializedProfileError || !initializedProfile) {
-    if (initializedProfileError) {
-      console.error("Unable to load user profile.", initializedProfileError);
-    }
-
     return fallbackProfile;
   }
 

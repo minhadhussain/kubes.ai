@@ -15,12 +15,17 @@ type AiProviderResponse = {
 };
 
 type ResolvedProviderConfig = {
-  provider: "openai" | "deepseek";
+  provider: "openai" | "deepseek" | "azure";
   apiKey: string;
   model: string;
   baseUrl: string;
   endpoint: string;
+  headers: Record<string, string>;
 };
+
+function trimTrailingSlashes(value: string) {
+  return value.replace(/\/+$/, "");
+}
 
 function resolveProviderConfig(): ResolvedProviderConfig {
   const env = getAiEnv();
@@ -37,13 +42,18 @@ function resolveProviderConfig(): ResolvedProviderConfig {
     throw new AppError("AI model configuration is invalid.", 500, "AI_MODEL_INVALID");
   }
 
+  const baseUrl = trimTrailingSlashes(env.AI_BASE_URL);
+
   if (env.AI_PROVIDER === "openai") {
     return {
       provider: env.AI_PROVIDER,
       apiKey: env.AI_API_KEY,
       model: env.AI_MODEL,
-      baseUrl: env.AI_BASE_URL,
-      endpoint: `${env.AI_BASE_URL.replace(/\/$/, "")}/v1/responses`
+      baseUrl,
+      endpoint: `${baseUrl}/v1/responses`,
+      headers: {
+        Authorization: `Bearer ${env.AI_API_KEY}`
+      }
     };
   }
 
@@ -52,8 +62,24 @@ function resolveProviderConfig(): ResolvedProviderConfig {
       provider: env.AI_PROVIDER,
       apiKey: env.AI_API_KEY,
       model: env.AI_MODEL,
-      baseUrl: env.AI_BASE_URL,
-      endpoint: `${env.AI_BASE_URL.replace(/\/$/, "")}/chat/completions`
+      baseUrl,
+      endpoint: `${baseUrl}/chat/completions`,
+      headers: {
+        Authorization: `Bearer ${env.AI_API_KEY}`
+      }
+    };
+  }
+
+  if (env.AI_PROVIDER === "azure") {
+    return {
+      provider: env.AI_PROVIDER,
+      apiKey: env.AI_API_KEY,
+      model: env.AI_MODEL,
+      baseUrl,
+      endpoint: `${baseUrl}/responses`,
+      headers: {
+        "api-key": env.AI_API_KEY
+      }
     };
   }
 
@@ -61,17 +87,34 @@ function resolveProviderConfig(): ResolvedProviderConfig {
 }
 
 function extractOpenAiOutput(payload: unknown) {
-  if (typeof payload !== "object" || payload === null || !("output_text" in payload)) {
+  if (typeof payload !== "object" || payload === null) {
     throw new AppError("AI provider returned an invalid response payload.", 502, "AI_INVALID_RESPONSE");
   }
 
   const outputText = (payload as { output_text?: unknown }).output_text;
 
-  if (typeof outputText !== "string" || outputText.trim().length === 0) {
-    throw new AppError("AI provider returned an empty response.", 502, "AI_INVALID_RESPONSE");
+  if (typeof outputText === "string" && outputText.trim().length > 0) {
+    return outputText;
   }
 
-  return outputText;
+  const output = (payload as {
+    output?: Array<{
+      content?: Array<{
+        text?: unknown;
+        type?: unknown;
+      }>;
+    }>;
+  }).output;
+
+  const textContent = output
+    ?.flatMap((item) => item.content ?? [])
+    .find((item) => item.type === "output_text" && typeof item.text === "string" && item.text.trim().length > 0);
+
+  if (typeof textContent?.text === "string") {
+    return textContent.text;
+  }
+
+  throw new AppError("AI provider returned an empty response.", 502, "AI_INVALID_RESPONSE");
 }
 
 function extractDeepSeekOutput(payload: unknown) {
@@ -93,7 +136,7 @@ export async function generateStructuredJson(prompt: JsonSchemaPrompt): Promise<
   const config = resolveProviderConfig();
 
   const body =
-    config.provider === "openai"
+    config.provider === "openai" || config.provider === "azure"
       ? {
           model: config.model,
           input: [
@@ -136,7 +179,7 @@ export async function generateStructuredJson(prompt: JsonSchemaPrompt): Promise<
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`
+      ...config.headers
     },
     body: JSON.stringify(body)
   });
@@ -148,7 +191,7 @@ export async function generateStructuredJson(prompt: JsonSchemaPrompt): Promise<
 
   const payload = await response.json();
 
-  const outputText = config.provider === "openai" ? extractOpenAiOutput(payload) : extractDeepSeekOutput(payload);
+  const outputText = config.provider === "deepseek" ? extractDeepSeekOutput(payload) : extractOpenAiOutput(payload);
 
   return {
     outputText,

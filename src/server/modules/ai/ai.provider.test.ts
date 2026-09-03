@@ -88,7 +88,7 @@ test("selects OpenAI provider configuration", async () => {
     {
       AI_PROVIDER: "openai",
       AI_API_KEY: "secret",
-      AI_MODEL: "gpt-4.1-mini",
+      AI_MODEL: "gpt-5.4",
       AI_BASE_URL: "https://api.openai.com"
     },
     async () => __internal.resolveProviderConfig()
@@ -96,6 +96,25 @@ test("selects OpenAI provider configuration", async () => {
 
   assert.equal(config.provider, "openai");
   assert.equal(config.endpoint, "https://api.openai.com/v1/responses");
+  assert.equal(config.headers.Authorization, "Bearer secret");
+});
+
+test("selects Azure provider configuration", async () => {
+  const { __internal } = await import("@/server/modules/ai/ai.provider");
+
+  const config = await withEnv(
+    {
+      AI_PROVIDER: "azure",
+      AI_API_KEY: "secret",
+      AI_MODEL: "gpt-5.4",
+      AI_BASE_URL: "https://example-resource.openai.azure.com/openai/v1/"
+    },
+    async () => __internal.resolveProviderConfig()
+  );
+
+  assert.equal(config.provider, "azure");
+  assert.equal(config.endpoint, "https://example-resource.openai.azure.com/openai/v1/responses");
+  assert.equal(config.headers["api-key"], "secret");
 });
 
 test("throws for invalid provider configuration", async () => {
@@ -162,6 +181,11 @@ test("detects malformed provider response payload", async () => {
 
   assert.throws(
     () => __internal.extractDeepSeekOutput({ choices: [] }),
+    (error: unknown) => error instanceof AppError && error.code === "AI_INVALID_RESPONSE"
+  );
+
+  assert.throws(
+    () => __internal.extractOpenAiOutput({ output_text: "" }),
     (error: unknown) => error instanceof AppError && error.code === "AI_INVALID_RESPONSE"
   );
 });
