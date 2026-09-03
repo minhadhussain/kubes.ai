@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { useCopilotPageContext } from "@/components/copilot/copilot-context";
 import { DataTable } from "@/components/ui/data-table";
 import { Metric } from "@/components/ui/metric";
 import { PageHeader } from "@/components/ui/page-header";
@@ -74,6 +75,7 @@ const emptyLeadForm = {
 };
 
 export function LeadsWorkspace({ initialLeads }: LeadsWorkspaceProps) {
+  const { setPageContext } = useCopilotPageContext();
   const [leads, setLeads] = useState(initialLeads);
   const [selectedLeadId, setSelectedLeadId] = useState(initialLeads[0]?.id ?? null);
   const [creating, setCreating] = useState(false);
@@ -91,6 +93,10 @@ export function LeadsWorkspace({ initialLeads }: LeadsWorkspaceProps) {
     () => leads.find((lead) => lead.id === selectedLeadId) ?? null,
     [leads, selectedLeadId]
   );
+
+  useEffect(() => {
+    setPageContext({ entityType: selectedLead ? "lead" : null, entityId: selectedLead?.id ?? null });
+  }, [selectedLead, setPageContext]);
 
   const stageCounts = useMemo(() => {
     return {

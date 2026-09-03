@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ReactNode } from "react";
 
+import { CopilotShell } from "@/components/copilot/copilot-shell";
 import { SidebarNav } from "@/components/navigation/sidebar-nav";
 import { TopBar } from "@/components/navigation/top-bar";
 
@@ -12,33 +13,35 @@ type AppShellProps = {
 
 export function AppShell({ organizationName, userName, children }: AppShellProps) {
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-brand">
-          <p className="section-label section-label-accent">Kubes.ai</p>
-          <h1>{organizationName}</h1>
-          <p className="sidebar-copy">Mission control for the full agent workflow.</p>
-        </div>
+    <CopilotShell>
+      <div className="app-shell">
+        <aside className="sidebar">
+          <div className="sidebar-brand">
+            <p className="section-label section-label-accent">Kubes.ai</p>
+            <h1>{organizationName}</h1>
+            <p className="sidebar-copy">Mission control for the full agent workflow.</p>
+          </div>
 
-        <div className="sidebar-nav-wrap">
-          <SidebarNav />
-        </div>
+          <div className="sidebar-nav-wrap">
+            <SidebarNav />
+          </div>
 
-        <div className="sidebar-spacer" aria-hidden="true" />
+          <div className="sidebar-spacer" aria-hidden="true" />
 
-        <div className="sidebar-footer">
-          <p className="section-label">Workspace user</p>
-          <strong>{userName}</strong>
-          <Link href="/settings" className="inline-link">
-            Configure workspace
-          </Link>
-        </div>
-      </aside>
+          <div className="sidebar-footer">
+            <p className="section-label">Workspace user</p>
+            <strong>{userName}</strong>
+            <Link href="/settings" className="inline-link">
+              Configure workspace
+            </Link>
+          </div>
+        </aside>
 
-      <main className="content">
-        <TopBar organizationName={organizationName} userName={userName} />
-        {children}
-      </main>
-    </div>
+        <main className="content">
+          <TopBar organizationName={organizationName} userName={userName} />
+          {children}
+        </main>
+      </div>
+    </CopilotShell>
   );
 }

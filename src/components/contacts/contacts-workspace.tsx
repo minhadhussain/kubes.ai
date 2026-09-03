@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { useCopilotPageContext } from "@/components/copilot/copilot-context";
 import { DataTable } from "@/components/ui/data-table";
 import { Metric } from "@/components/ui/metric";
 import { PageHeader } from "@/components/ui/page-header";
@@ -102,6 +103,7 @@ const emptyContactForm = {
 };
 
 export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
+  const { setPageContext } = useCopilotPageContext();
   const [contacts, setContacts] = useState(initialContacts);
   const [selectedContactId, setSelectedContactId] = useState(initialContacts[0]?.id ?? null);
   const [selectedContact, setSelectedContact] = useState<ContactDetail | null>(null);
@@ -133,6 +135,10 @@ export function ContactsWorkspace({ initialContacts }: ContactsWorkspaceProps) {
       return matchesSearch && matchesType;
     });
   }, [contacts, search, typeFilter]);
+
+  useEffect(() => {
+    setPageContext({ entityType: selectedContact?.contact.id ? "contact" : null, entityId: selectedContact?.contact.id ?? null });
+  }, [selectedContact, setPageContext]);
 
   useEffect(() => {
     if (!selectedContactId) {

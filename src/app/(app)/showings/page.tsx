@@ -1,5 +1,10 @@
-import { WorkspaceModuleDataPage } from "@/components/workspace/workspace-module-data";
+import { ShowingsWorkspace } from "@/components/showings/showings-workspace";
+import { listSeededShowings } from "@/server/modules/showings/showings.service";
 
-export default function ShowingsPage() {
-  return <WorkspaceModuleDataPage moduleKey="showings" />;
+export const dynamic = "force-dynamic";
+
+export default async function ShowingsPage() {
+  const showings = await listSeededShowings();
+
+  return <ShowingsWorkspace showings={showings} />;
 }

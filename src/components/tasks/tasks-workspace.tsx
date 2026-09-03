@@ -1,7 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { useCopilotPageContext } from "@/components/copilot/copilot-context";
 import { DataTable } from "@/components/ui/data-table";
 import { Metric } from "@/components/ui/metric";
 import { PageHeader } from "@/components/ui/page-header";
@@ -36,6 +37,7 @@ const emptyTaskForm = {
 };
 
 export function TasksWorkspace({ initialTasks }: TasksWorkspaceProps) {
+  const { setPageContext } = useCopilotPageContext();
   const [tasks, setTasks] = useState(initialTasks);
   const [taskForm, setTaskForm] = useState(emptyTaskForm);
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +67,11 @@ export function TasksWorkspace({ initialTasks }: TasksWorkspaceProps) {
     }),
     [tasks]
   );
+
+  useEffect(() => {
+    const selectedTask = tasks.find((task) => task.status === "pending" || task.status === "in_progress") ?? tasks[0] ?? null;
+    setPageContext({ entityType: selectedTask ? "task" : null, entityId: selectedTask?.id ?? null });
+  }, [setPageContext, tasks]);
 
   async function refreshTasks() {
     const response = await fetch("/api/tasks", { cache: "no-store" });

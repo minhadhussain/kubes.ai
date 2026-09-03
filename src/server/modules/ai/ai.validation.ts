@@ -144,3 +144,49 @@ export const followUpDraftJsonSchema = {
   },
   required: ["channel", "message", "rationale", "confidence", "sources"]
 } as const;
+
+export const copilotMessageSchema = z.object({
+  id: z.string().min(1),
+  role: z.enum(["user", "assistant"]),
+  content: z.string().min(1).max(4000)
+});
+
+export const copilotPageContextSchema = z.object({
+  pathname: z.string().min(1),
+  entityType: z.enum(["lead", "contact", "task", "property", "listing", "showing", "transaction"]).nullable().optional(),
+  entityId: z.string().uuid().nullable().optional()
+});
+
+export const copilotRequestSchema = z.object({
+  messages: z.array(copilotMessageSchema).min(1).max(20),
+  pageContext: copilotPageContextSchema.optional()
+});
+
+export const copilotResponseSchema = z.object({
+  title: z.string().min(1).max(80),
+  answer: z.string().min(1),
+  referencedRecordIds: z.array(z.string().min(1)).max(8),
+  followUpSuggestions: z.array(z.string().min(1).max(120)).max(4),
+  caution: z.string().min(1).max(240).nullable().optional()
+});
+
+export const copilotResponseJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: { type: "string" },
+    answer: { type: "string" },
+    referencedRecordIds: {
+      type: "array",
+      items: { type: "string" }
+    },
+    followUpSuggestions: {
+      type: "array",
+      items: { type: "string" }
+    },
+    caution: {
+      anyOf: [{ type: "string" }, { type: "null" }]
+    }
+  },
+  required: ["title", "answer", "referencedRecordIds", "followUpSuggestions", "caution"]
+} as const;
