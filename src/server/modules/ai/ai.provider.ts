@@ -185,8 +185,10 @@ export async function generateStructuredJson(prompt: JsonSchemaPrompt): Promise<
   });
 
   if (!response.ok) {
-    const body = await response.text();
-    throw new AppError(`AI provider error: ${body}`, 502, "AI_PROVIDER_ERROR");
+    const responseBody = await response.text();
+    const status = response.status;
+    const statusText = response.statusText;
+    throw new AppError(`AI provider error (${status} ${statusText}): ${responseBody}`, 502, "AI_PROVIDER_ERROR");
   }
 
   const payload = await response.json();

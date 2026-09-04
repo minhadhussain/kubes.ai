@@ -251,7 +251,7 @@ export const copilotPlannerSchema = z.object({
       z.object({
         toolName: z.string().min(1),
         reason: z.string().min(1),
-        arguments: z.record(z.string(), z.unknown())
+        argumentsJson: z.string().min(2)
       })
     )
     .max(4)
@@ -265,7 +265,7 @@ export const copilotPlannerSchema = z.object({
   actionType: z.string().nullable().default(null),
   actionTitle: z.string().nullable().default(null),
   actionMessage: z.string().nullable().default(null),
-  actionPayload: z.record(z.string(), z.unknown()).nullable().default(null)
+  actionPayloadJson: z.string().nullable().default(null)
 });
 
 export const copilotPlannerJsonSchema = {
@@ -282,12 +282,9 @@ export const copilotPlannerJsonSchema = {
         properties: {
           toolName: { type: "string" },
           reason: { type: "string" },
-          arguments: {
-            type: "object",
-            additionalProperties: true
-          }
+          argumentsJson: { type: "string" }
         },
-        required: ["toolName", "reason", "arguments"]
+        required: ["toolName", "reason", "argumentsJson"]
       }
     },
     title: { anyOf: [{ type: "string" }, { type: "null" }] },
@@ -305,15 +302,7 @@ export const copilotPlannerJsonSchema = {
     actionType: { anyOf: [{ type: "string" }, { type: "null" }] },
     actionTitle: { anyOf: [{ type: "string" }, { type: "null" }] },
     actionMessage: { anyOf: [{ type: "string" }, { type: "null" }] },
-    actionPayload: {
-      anyOf: [
-        {
-          type: "object",
-          additionalProperties: true
-        },
-        { type: "null" }
-      ]
-    }
+    actionPayloadJson: { anyOf: [{ type: "string" }, { type: "null" }] }
   },
   required: [
     "stepType",
@@ -328,6 +317,6 @@ export const copilotPlannerJsonSchema = {
     "actionType",
     "actionTitle",
     "actionMessage",
-    "actionPayload"
+    "actionPayloadJson"
   ]
 } as const;

@@ -54,6 +54,34 @@ function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+function renderStructuredMessage(content: string) {
+  const blocks = content
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .filter(Boolean);
+
+  return blocks.map((block, index) => {
+    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    const isList = lines.length > 1 && lines.every((line) => /^([-*]|\d+\.)\s+/.test(line));
+
+    if (isList) {
+      return (
+        <ol key={`${block}-${index}`} className="copilot-structured-list">
+          {lines.map((line, lineIndex) => (
+            <li key={`${line}-${lineIndex}`}>{line.replace(/^([-*]|\d+\.)\s+/, "")}</li>
+          ))}
+        </ol>
+      );
+    }
+
+    return (
+      <p key={`${block}-${index}`} className="copilot-structured-paragraph">
+        {block}
+      </p>
+    );
+  });
+}
+
 export function FloatingCopilot() {
   const pathname = usePathname();
   const { pageContext } = useCopilotPageContext();
@@ -75,17 +103,24 @@ export function FloatingCopilot() {
   const emptyState = useMemo(() => messages.length === 0, [messages.length]);
 
   async function sendMessage(content: string) {
+    const trimmedContent = content.trim();
+
+    if (!trimmedContent) {
+      return;
+    }
+
     const userMessage: CopilotMessage = {
       id: createId("user"),
       role: "user",
-      content
+      content: trimmedContent
     };
 
     const nextMessages = [...messages, userMessage];
     setMessages(nextMessages);
+    setDraft("");
     setLoading(true);
     setError(null);
-    setRetryMessage(content);
+    setRetryMessage(trimmedContent);
 
     try {
       const response = await fetch("/api/ai/copilot", {
@@ -224,7 +259,7 @@ export function FloatingCopilot() {
             {emptyState ? (
               <div className="copilot-empty-state">
                 <h3>Kubes AI</h3>
-                <p>Ask anything about your real estate business.</p>
+                <p>Hi! I&apos;m Kubes AI. How can I help?</p>
                 <div className="copilot-suggestions">
                   {starterPrompts.map((prompt) => (
                     <button key={prompt} type="button" className="copilot-suggestion" onClick={() => void sendMessage(prompt)}>
@@ -238,7 +273,7 @@ export function FloatingCopilot() {
                 <article key={message.id} className={`copilot-message copilot-message-${message.role}`}>
                   <div className="copilot-message-body">
                     {message.title ? <strong>{message.title}</strong> : null}
-                    <p>{message.content}</p>
+                    <div className="copilot-message-content">{renderStructuredMessage(message.content)}</div>
                     {message.basedOn ? <p className="table-meta">{message.basedOn}</p> : null}
                     {message.caution ? <p className="table-meta">{message.caution}</p> : null}
                     {message.linkedRecords?.length ? (
@@ -300,7 +335,7 @@ export function FloatingCopilot() {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
                   if (canSend) {
-                    void sendMessage(draft.trim());
+                    void sendMessage(draft);
                   }
                 }
               }}
@@ -309,7 +344,7 @@ export function FloatingCopilot() {
               <button type="button" className="button-secondary button-compact" onClick={() => setMessages([])} disabled={messages.length === 0 || loading}>
                 Clear conversation
               </button>
-              <button type="button" className="button button-compact" onClick={() => void sendMessage(draft.trim())} disabled={!canSend}>
+              <button type="button" className="button button-compact" onClick={() => void sendMessage(draft)} disabled={!canSend}>
                 Send
               </button>
             </div>

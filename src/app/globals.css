@@ -1325,6 +1325,22 @@ button {
   margin: 0;
 }
 
+.copilot-message-content {
+  display: grid;
+  gap: 10px;
+}
+
+.copilot-structured-paragraph {
+  white-space: pre-wrap;
+}
+
+.copilot-structured-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
 .copilot-record-link,
 .copilot-suggestion {
   display: grid;

@@ -56,6 +56,20 @@ type ToolRun = {
   data: Record<string, unknown>;
 };
 
+function parsePlannerJsonField(fieldName: string, rawValue: string): Record<string, unknown> {
+  try {
+    const parsed = JSON.parse(rawValue);
+
+    if (typeof parsed !== "object" || parsed == null || Array.isArray(parsed)) {
+      throw new Error("Parsed value is not an object.");
+    }
+
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new AppError(`AI planner returned invalid ${fieldName}.`, 502, "AI_INVALID_RESPONSE");
+  }
+}
+
 function mapProviderError(error: unknown) {
   if (!(error instanceof AppError)) {
     return error;
@@ -72,6 +86,18 @@ function mapProviderError(error: unknown) {
       return new AppError("The AI provider is rate limited right now. Please try again shortly.", 429, "AI_RATE_LIMITED");
     }
 
+    if (message.includes("401") || message.includes("unauthorized") || message.includes("invalid api key")) {
+      return new AppError("The AI provider credentials are invalid on the server.", 502, "AI_PROVIDER_AUTH_FAILED");
+    }
+
+    if (message.includes("404") || message.includes("deployment") || message.includes("resource not found")) {
+      return new AppError("The configured AI model or deployment could not be found.", 502, "AI_PROVIDER_DEPLOYMENT_NOT_FOUND");
+    }
+
+    if (message.includes("400") || message.includes("invalid_request_error") || message.includes("unsupported")) {
+      return new AppError("The AI provider rejected the request format for the configured model.", 502, "AI_PROVIDER_REQUEST_REJECTED");
+    }
+
     if (message.includes("timeout")) {
       return new AppError("The AI provider timed out. Please try again.", 504, "AI_TIMEOUT");
     }
@@ -84,6 +110,11 @@ function mapProviderError(error: unknown) {
   }
 
   return error;
+}
+
+function logAiPersistenceWarning(step: string, error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.warn(`[copilot] ${step} failed: ${message}`);
 }
 
 function buildConversationTranscript(messages: CopilotMessage[]) {
@@ -128,7 +159,7 @@ function buildPlannerPrompt(input: {
 }) {
   return JSON.stringify({
     instruction:
-      "You are planning the next step for Kubes AI. Choose only from the allowed tools. Use tool_calls when more data is needed, answer when the available tool results are sufficient, and propose_action when the user is asking to create or update something. Never invent data. Do not ask tools for irrelevant data. Use follow-up context from the conversation when pronouns like 'this' or 'which one' appear.",
+      "You are planning the next step for Kubes AI, a natural conversational assistant connected to an authenticated real-estate workspace. First decide whether the user is asking a general question, a Kubes workspace question, or a mixed question. For normal greetings, casual chat, writing help, math, explanations, and general knowledge, answer naturally without calling any tools. Use tool_calls only when workspace data is actually needed. Use answer when the available tool results are sufficient or when the question can be answered from general knowledge without any tool calls. Use propose_action when the user is asking to create or update something. Never invent Kubes data. Do not ask tools for irrelevant data. Use follow-up context from the conversation when pronouns like 'this', 'which one', 'her', or 'that one' appear. For every tool call, argumentsJson must be a valid JSON string representing an object. For every proposed action, actionPayloadJson must be a valid JSON string representing an object. Do not return nested objects in those fields.",
     latestUserMessage: input.latestUserMessage,
     pageContext: input.pageContext ?? null,
     conversation: buildConversationTranscript(input.messages),
@@ -151,7 +182,7 @@ function buildAnswerPrompt(input: {
 }) {
   return JSON.stringify({
     instruction:
-      "Answer the user using only the validated tool outputs. Distinguish facts from analysis. Keep the answer concise and useful. referencedRecordIds must only contain IDs from the provided references. basedOn should be a short traceability note like 'Based on 4 active leads.' or null.",
+      "You are Kubes AI, a friendly and professional conversational assistant. If the user's question is general and does not require Kubes workspace data, answer naturally using normal model knowledge. If the question requires Kubes data, use only the validated tool outputs provided here. If the question is mixed, combine general reasoning with the provided tool outputs. Never invent Kubes facts. If workspace information is missing, say so clearly. Keep the answer concise, helpful, and easy to scan. Use short paragraphs and line breaks. When returning multiple records, format them as a numbered list in the answer text. Only mention that something is based on Kubes data when that context is actually relevant. referencedRecordIds must only contain IDs from the provided references. basedOn should be a short traceability note like 'Based on 4 active leads.' or null.",
     latestUserMessage: input.latestUserMessage,
     pageContext: input.pageContext ?? null,
     conversation: buildConversationTranscript(input.messages),
@@ -173,7 +204,7 @@ async function planNextStep(input: {
 }) {
   const providerResult = await generateStructuredJson({
     system:
-      "You are Kubes AI's planning engine. Plan safe, minimal tool usage inside an authenticated real-estate CRM. Never invent records or ask for unauthorized data. Use only the supplied tool list.",
+      "You are Kubes AI's planning engine. Behave like a normal conversational assistant first, and use safe minimal tool usage only when workspace data or actions are actually needed. Never invent records or ask for unauthorized data. Use only the supplied tool list.",
     user: buildPlannerPrompt(input),
     jsonSchema: copilotPlannerJsonSchema
   });
@@ -192,7 +223,7 @@ async function synthesizeAnswer(input: {
 }) {
   const providerResult = await generateStructuredJson({
     system:
-      "You are Kubes AI, a universal real-estate copilot. Use only the provided tool outputs. Never invent facts. If information is missing from Kubes, say so clearly.",
+      "You are Kubes AI, a natural ChatGPT-style assistant connected to a real-estate workspace. Use normal model knowledge for general questions. Use the provided tool outputs only for workspace-specific facts. Never invent workspace data. If information is missing from Kubes, say so clearly.",
     user: buildAnswerPrompt(input),
     jsonSchema: copilotResponseJsonSchema
   });
@@ -231,7 +262,7 @@ async function resolveToolRuns(input: {
       }
 
       for (const toolCall of plan.toolCalls) {
-        const result = await executeCopilotTool(toolCall.toolName, toolCall.arguments);
+        const result = await executeCopilotTool(toolCall.toolName, parsePlannerJsonField("tool arguments", toolCall.argumentsJson));
         toolRuns.push({
           toolName: result.toolName,
           summary: result.summary,
@@ -245,7 +276,7 @@ async function resolveToolRuns(input: {
     }
 
     if (plan.stepType === "propose_action") {
-      if (!plan.actionType || !plan.actionPayload || !plan.actionTitle || !plan.actionMessage) {
+      if (!plan.actionType || !plan.actionPayloadJson || !plan.actionTitle || !plan.actionMessage) {
         throw new AppError("AI planner returned an incomplete action proposal.", 502, "AI_INVALID_RESPONSE");
       }
 
@@ -256,7 +287,7 @@ async function resolveToolRuns(input: {
           actionType: plan.actionType,
           actionTitle: plan.actionTitle,
           actionMessage: plan.actionMessage,
-          actionPayload: plan.actionPayload,
+          actionPayload: parsePlannerJsonField("action payload", plan.actionPayloadJson),
           references: toolRuns.flatMap((run) => run.references).slice(0, 8),
           followUpSuggestions: plan.followUpSuggestions
         }
@@ -409,18 +440,24 @@ export async function runCopilotConversation(input: {
     throw new AppError("A user message is required.", 400, "AI_COPILOT_MESSAGE_REQUIRED");
   }
 
-  const runId = await createAiRun({
-    organizationId,
-    userId: user.id,
-    featureKey: "copilot_assistant",
-    entityType: input.pageContext?.entityType ?? "workspace",
-    entityId: input.pageContext?.entityId ?? null,
-    sourceContext: {
-      pathname: input.pageContext?.pathname ?? "/dashboard",
-      messageCount: input.messages.length,
-      contextLabel: buildPageContextLabel(input.pageContext)
-    }
-  });
+  let runId: string | null = null;
+
+  try {
+    runId = await createAiRun({
+      organizationId,
+      userId: user.id,
+      featureKey: "copilot_assistant",
+      entityType: input.pageContext?.entityType ?? "workspace",
+      entityId: input.pageContext?.entityId ?? null,
+      sourceContext: {
+        pathname: input.pageContext?.pathname ?? "/dashboard",
+        messageCount: input.messages.length,
+        contextLabel: buildPageContextLabel(input.pageContext)
+      }
+    });
+  } catch (error) {
+    logAiPersistenceWarning("createAiRun", error);
+  }
 
   try {
     const resolved = await resolveToolRuns({
@@ -436,23 +473,37 @@ export async function runCopilotConversation(input: {
     };
 
     if (resolved.pendingAction) {
-      const pendingAction = await persistPendingAction({
-        organizationId,
-        userId: user.id,
-        runId,
-        pageContext: input.pageContext,
-        pathname: input.pageContext?.pathname ?? "/dashboard",
-        pendingAction: resolved.pendingAction,
-        toolRuns: resolved.toolRuns
-      });
+      let pendingAction = null;
 
-      await completeAiRun({
-        runId,
-        status: "completed",
-        provider: providerMeta.provider,
-        model: providerMeta.model,
-        baseUrl: providerMeta.baseUrl
-      });
+      if (runId) {
+        try {
+          pendingAction = await persistPendingAction({
+            organizationId,
+            userId: user.id,
+            runId,
+            pageContext: input.pageContext,
+            pathname: input.pageContext?.pathname ?? "/dashboard",
+            pendingAction: resolved.pendingAction,
+            toolRuns: resolved.toolRuns
+          });
+        } catch (error) {
+          logAiPersistenceWarning("persistPendingAction", error);
+        }
+      }
+
+      if (runId) {
+        try {
+          await completeAiRun({
+            runId,
+            status: "completed",
+            provider: providerMeta.provider,
+            model: providerMeta.model,
+            baseUrl: providerMeta.baseUrl
+          });
+        } catch (error) {
+          logAiPersistenceWarning("completeAiRun", error);
+        }
+      }
 
       return {
         title: resolved.pendingAction.actionTitle,
@@ -462,7 +513,7 @@ export async function runCopilotConversation(input: {
         linkedRecords: resolved.pendingAction.references,
         followUpSuggestions: resolved.pendingAction.followUpSuggestions,
         pendingAction,
-        actionArtifactId: pendingAction.artifactId
+        actionArtifactId: pendingAction?.artifactId ?? null
       };
     }
 
@@ -479,45 +530,55 @@ export async function runCopilotConversation(input: {
       .filter((reference) => response.referencedRecordIds.includes(reference.id))
       .slice(0, 8);
 
-    await completeAiRun({
-      runId,
-      status: "completed",
-      provider: providerResult.provider,
-      model: providerResult.model,
-      baseUrl: providerResult.baseUrl
-    });
+    if (runId) {
+      try {
+        await completeAiRun({
+          runId,
+          status: "completed",
+          provider: providerResult.provider,
+          model: providerResult.model,
+          baseUrl: providerResult.baseUrl
+        });
+      } catch (error) {
+        logAiPersistenceWarning("completeAiRun", error);
+      }
 
-    await createAiArtifact({
-      organizationId,
-      runId,
-      createdBy: user.id,
-      artifactType: "copilot_response",
-      entityType: input.pageContext?.entityType ?? "workspace",
-      entityId: input.pageContext?.entityId ?? null,
-      title: response.title,
-      summary: response.answer,
-      content: {
-        answer: response.answer,
-        basedOn: response.basedOn,
-        caution: response.caution,
-        followUpSuggestions: response.followUpSuggestions,
-        linkedRecordIds: linkedRecords.map((record) => record.id),
-        toolRuns: resolved.toolRuns.map((run) => ({
-          toolName: run.toolName,
-          summary: run.summary,
-          basedOn: run.basedOn ?? null
-        }))
-      },
-      confidence: 0.78,
-      sourceContext: {
-        pathname: input.pageContext?.pathname ?? "/dashboard",
-        messageCount: input.messages.length,
-        toolCalls: resolved.toolRuns.map((run) => run.toolName),
-        linkedRecordIds: linkedRecords.map((record) => record.id)
-      },
-      approvalStatus: "approved",
-      actionStatus: "saved"
-    });
+      try {
+        await createAiArtifact({
+          organizationId,
+          runId,
+          createdBy: user.id,
+          artifactType: "copilot_response",
+          entityType: input.pageContext?.entityType ?? "workspace",
+          entityId: input.pageContext?.entityId ?? null,
+          title: response.title,
+          summary: response.answer,
+          content: {
+            answer: response.answer,
+            basedOn: response.basedOn,
+            caution: response.caution,
+            followUpSuggestions: response.followUpSuggestions,
+            linkedRecordIds: linkedRecords.map((record) => record.id),
+            toolRuns: resolved.toolRuns.map((run) => ({
+              toolName: run.toolName,
+              summary: run.summary,
+              basedOn: run.basedOn ?? null
+            }))
+          },
+          confidence: 0.78,
+          sourceContext: {
+            pathname: input.pageContext?.pathname ?? "/dashboard",
+            messageCount: input.messages.length,
+            toolCalls: resolved.toolRuns.map((run) => run.toolName),
+            linkedRecordIds: linkedRecords.map((record) => record.id)
+          },
+          approvalStatus: "approved",
+          actionStatus: "saved"
+        });
+      } catch (error) {
+        logAiPersistenceWarning("createAiArtifact", error);
+      }
+    }
 
     return {
       title: response.title,
@@ -533,11 +594,17 @@ export async function runCopilotConversation(input: {
     const mappedError = mapProviderError(error);
     const message = mappedError instanceof Error ? mappedError.message : "Unknown AI error.";
 
-    await completeAiRun({
-      runId,
-      status: "failed",
-      errorMessage: message
-    });
+    if (runId) {
+      try {
+        await completeAiRun({
+          runId,
+          status: "failed",
+          errorMessage: message
+        });
+      } catch (completeError) {
+        logAiPersistenceWarning("completeAiRun", completeError);
+      }
+    }
 
     throw mappedError;
   }
