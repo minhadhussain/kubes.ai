@@ -18,9 +18,8 @@ type PropertyRecord = {
   locality: string;
   city: string;
   state: string;
+  country: string;
   propertyType: string;
-  price: number;
-  displayPrice: string;
   bedrooms: number;
   bathrooms: number;
   areaSqft: number;
@@ -29,21 +28,25 @@ type PropertyRecord = {
   amenities: string[];
   description: string;
   status: string;
-  listingStatus: string;
   image: string;
   createdAt: string;
+  listingCount: number;
+  activeListingCount: number;
+  latestListingStatus: string | null;
+  latestListingPrice: number | null;
+  latestListingPriceDisplay: string | null;
+  currentMarketState: "on_market" | "off_market";
   showingCount: number;
   offerCount: number;
-  listing: {
+  transactionCount: number;
+  latestListing: {
     id: string;
     status: string;
     listPrice: number;
     daysOnMarket: number;
-  } | null;
-  transaction: {
-    id: string;
-    stage: string;
-    closingDate: string | null;
+    listingType: string;
+    publishedAt: string | null;
+    expiresAt: string | null;
   } | null;
 };
 
@@ -69,7 +72,7 @@ type PropertyDetail = {
     image: string;
     createdAt: string;
   };
-  listing: {
+  listings: Array<{
     id: string;
     status: string;
     listingType: string;
@@ -78,7 +81,11 @@ type PropertyDetail = {
     publishedAt: string | null;
     expiresAt: string | null;
     description: string;
-  } | null;
+    seller: { displayName: string } | null;
+    showingCount: number;
+    offerCount: number;
+    transaction: { id: string; stage: string; closingDate: string | null } | null;
+  }>;
   showings: Array<{
     id: string;
     status: string;
@@ -95,15 +102,13 @@ type PropertyDetail = {
     buyer: { displayName: string } | null;
     seller: { displayName: string } | null;
   }>;
-  transaction:
-    | {
-        id: string;
-        stage: string;
-        closingDate: string | null;
-        salePrice: number;
-        summary: string;
-      }
-    | null;
+  transactions: Array<{
+    id: string;
+    stage: string;
+    closingDate: string | null;
+    salePrice: number;
+    summary: string;
+  }>;
   documents: Array<{
     id: string;
     fileName: string;
@@ -134,22 +139,22 @@ function currency(value: number) {
 export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorkspaceProps) {
   const { setPageContext } = useCopilotPageContext();
   const [search, setSearch] = useState("");
-  const [listingFilter, setListingFilter] = useState("all");
+  const [marketFilter, setMarketFilter] = useState("all");
   const [view, setView] = useState<"grid" | "list">("grid");
   const [selectedPropertyId, setSelectedPropertyId] = useState(properties[0]?.id ?? null);
 
   const filteredProperties = useMemo(() => {
     const normalized = search.trim().toLowerCase();
 
-    return properties.filter((property) => {
-      const matchesSearch =
-        normalized.length === 0 ||
-        `${property.title} ${property.addressLine1} ${property.locality} ${property.city}`.toLowerCase().includes(normalized);
-      const matchesFilter = listingFilter === "all" || property.listingStatus === listingFilter;
+      return properties.filter((property) => {
+        const matchesSearch =
+          normalized.length === 0 ||
+          `${property.title} ${property.addressLine1} ${property.locality} ${property.city}`.toLowerCase().includes(normalized);
+        const matchesFilter = marketFilter === "all" || property.currentMarketState === marketFilter;
 
-      return matchesSearch && matchesFilter;
-    });
-  }, [listingFilter, properties, search]);
+        return matchesSearch && matchesFilter;
+      });
+  }, [marketFilter, properties, search]);
 
   const selectedProperty = filteredProperties.find((property) => property.id === selectedPropertyId) ?? properties.find((property) => property.id === selectedPropertyId) ?? null;
   const selectedDetail = selectedProperty ? detailsById[selectedProperty.id] : null;
@@ -161,9 +166,10 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
   const metrics = useMemo(
     () => ({
       total: properties.length,
-      activeListings: properties.filter((property) => property.listingStatus === "active").length,
-      underCr: properties.filter((property) => property.price < 10000000).length,
-      liveShowings: properties.filter((property) => property.showingCount > 0).length
+      onMarket: properties.filter((property) => property.currentMarketState === "on_market").length,
+      withHistory: properties.filter((property) => property.listingCount > 0).length,
+      liveShowings: properties.filter((property) => property.showingCount > 0).length,
+      transacting: properties.filter((property) => property.transactionCount > 0).length
     }),
     [properties]
   );
@@ -179,8 +185,8 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
     <div className="section-stack">
       <PageHeader
         label="Properties"
-        title="Manage your property database."
-        description="Track inventory, listing readiness, showings, offers, and transaction movement from one connected property workspace."
+        title="Canonical property database"
+        description="Manage the real-world assets in your database, then inspect each property's connected listing history, showings, offers, and transactions without merging those records together."
         meta={
           <div className="header-meta-grid">
             <div>
@@ -188,8 +194,8 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
               <strong>{properties.length} properties</strong>
             </div>
             <div>
-              <p className="section-label">Market pulse</p>
-              <StatusBadge label={`${metrics.activeListings} active listings`} tone="accent" />
+              <p className="section-label">On market</p>
+              <StatusBadge label={`${metrics.onMarket} properties with live listings`} tone="accent" />
             </div>
           </div>
         }
@@ -202,13 +208,10 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
               value={search}
               onChange={(event) => setSearch(event.target.value)}
             />
-            <select className="select-compact" value={listingFilter} onChange={(event) => setListingFilter(event.target.value)}>
-              <option value="all">Filters</option>
-              <option value="active">Active</option>
-              <option value="coming_soon">Coming soon</option>
-              <option value="pending">Pending</option>
-              <option value="under_contract">Under contract</option>
-              <option value="unlisted">Unlisted</option>
+            <select className="select-compact" value={marketFilter} onChange={(event) => setMarketFilter(event.target.value)}>
+              <option value="all">All properties</option>
+              <option value="on_market">On market</option>
+              <option value="off_market">Off market</option>
             </select>
             <button className="button-secondary button-compact" type="button" onClick={() => setView((current) => (current === "grid" ? "list" : "grid"))}>
               {view === "grid" ? "List view" : "Grid view"}
@@ -219,10 +222,10 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
       />
 
       <div className="metrics-grid">
-        <Metric label="Total properties" value={metrics.total} meta="Realistic seeded inventory across active localities" tone="accent" status="Live" />
-        <Metric label="Active listings" value={metrics.activeListings} meta="Properties currently marketed" />
-        <Metric label="Under ₹1Cr" value={metrics.underCr} meta="Budget-aligned inventory for value buyers" />
-        <Metric label="With showings" value={metrics.liveShowings} meta="Properties already drawing demand" />
+        <Metric label="Total properties" value={metrics.total} meta="Canonical asset records across your workspace" tone="accent" status="Live" />
+        <Metric label="On market" value={metrics.onMarket} meta="Properties linked to active listings" />
+        <Metric label="With listing history" value={metrics.withHistory} meta="Assets that have been listed at least once" />
+        <Metric label="In workflow" value={metrics.transacting} meta="Properties already connected to transactions" />
       </div>
 
       <div className="dashboard-grid">
@@ -236,25 +239,26 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
                     type="button"
                     className={`property-card ${selectedPropertyId === property.id ? "property-card-active" : ""}`}
                     onClick={() => setSelectedPropertyId(property.id)}
-                  >
-                    <Image src={property.image} alt={property.title} className="property-card-image" width={900} height={600} />
-                    <div className="property-card-body">
-                      <div className="property-card-topline">
-                        <StatusBadge
-                          label={property.listingStatus === "unlisted" ? "Unlisted" : property.listingStatus.replace(/_/g, " ")}
-                          tone={property.listingStatus === "active" ? "accent" : property.listingStatus === "pending" || property.listingStatus === "under_contract" ? "warning" : "neutral"}
-                        />
-                        <strong>{property.displayPrice}</strong>
+                    >
+                      <Image src={property.image} alt={property.title} className="property-card-image" width={900} height={600} />
+                      <div className="property-card-body">
+                        <div className="property-card-topline">
+                          <StatusBadge
+                            label={property.currentMarketState === "on_market" ? "On market" : "Off market"}
+                            tone={property.currentMarketState === "on_market" ? "accent" : "neutral"}
+                          />
+                          <strong>{property.latestListingPriceDisplay ?? "No listing yet"}</strong>
+                        </div>
+                        <h3>{property.addressLine1}</h3>
+                        <p>{property.locality}, {property.city}</p>
+                        <div className="property-card-stats">
+                          <span>{property.bedrooms} BHK</span>
+                          <span>{property.bathrooms} Bath</span>
+                          <span>{property.areaSqft.toLocaleString()} sq ft</span>
+                          <span>{property.listingCount} listing{property.listingCount === 1 ? "" : "s"}</span>
+                        </div>
                       </div>
-                      <h3>{property.addressLine1}</h3>
-                      <p>{property.locality}, {property.city}</p>
-                      <div className="property-card-stats">
-                        <span>{property.bedrooms} BHK</span>
-                        <span>{property.bathrooms} Bath</span>
-                        <span>{property.areaSqft.toLocaleString()} sq ft</span>
-                      </div>
-                    </div>
-                  </button>
+                    </button>
                 ))}
               </div>
             ) : (
@@ -269,10 +273,10 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
                       </button>
                     )
                   },
-                  { key: "price", header: "Price", render: (row) => <span>{row.displayPrice}</span> },
                   { key: "type", header: "Type", render: (row) => <span>{row.bedrooms} BHK {row.propertyType}</span> },
-                  { key: "listing", header: "Listing", render: (row) => <StatusBadge label={row.listingStatus} tone={row.listingStatus === "active" ? "accent" : "neutral"} /> },
-                  { key: "demand", header: "Demand", render: (row) => <span>{row.showingCount} showings · {row.offerCount} offers</span> }
+                  { key: "market", header: "Market state", render: (row) => <StatusBadge label={row.currentMarketState === "on_market" ? "On market" : "Off market"} tone={row.currentMarketState === "on_market" ? "accent" : "neutral"} /> },
+                  { key: "history", header: "Listings", render: (row) => <span>{row.listingCount}</span> },
+                  { key: "demand", header: "Workflow", render: (row) => <span>{row.showingCount} showings · {row.offerCount} offers</span> }
                 ]}
                 rows={filteredProperties}
               />
@@ -286,24 +290,24 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
               <div className="section-stack compact-stack">
                 <div className="detail-grid">
                   <div>
-                    <p className="section-label">Overview</p>
-                    <strong>{selectedProperty.displayPrice}</strong>
-                    <p className="table-meta">{selectedProperty.addressLine1}, {selectedProperty.locality}</p>
+                    <p className="section-label">Address</p>
+                    <strong>{selectedProperty.addressLine1}</strong>
+                    <p className="table-meta">{selectedProperty.locality}, {selectedProperty.city}, {selectedProperty.state}</p>
                   </div>
                   <div>
-                    <p className="section-label">Property information</p>
+                    <p className="section-label">Physical profile</p>
                     <strong>{selectedProperty.bedrooms} BHK · {selectedProperty.bathrooms} Bath</strong>
                     <p className="table-meta">{selectedProperty.areaSqft.toLocaleString()} sq ft · {selectedProperty.parkingSpaces} parking</p>
                   </div>
                   <div>
-                    <p className="section-label">Features</p>
+                    <p className="section-label">Asset details</p>
                     <strong>{selectedProperty.furnishing}</strong>
                     <p className="table-meta">{selectedProperty.amenities.slice(0, 2).join(" · ")}</p>
                   </div>
                   <div>
-                    <p className="section-label">Listing information</p>
-                    <strong>{selectedProperty.listingStatus === "unlisted" ? "Not on market" : selectedProperty.listingStatus.replace(/_/g, " ")}</strong>
-                    <p className="table-meta">{selectedDetail.listing ? `${selectedDetail.listing.daysOnMarket} DOM` : "Ready for listing creation"}</p>
+                    <p className="section-label">Market linkage</p>
+                    <strong>{selectedProperty.listingCount} listing{selectedProperty.listingCount === 1 ? "" : "s"}</strong>
+                    <p className="table-meta">{selectedProperty.latestListing ? `${selectedProperty.latestListing.status.replace(/_/g, " ")} · ${selectedProperty.latestListing.daysOnMarket} DOM` : "No listings created yet"}</p>
                   </div>
                 </div>
                 <p>{selectedProperty.description}</p>
@@ -321,23 +325,23 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
         </section>
 
         <section className="dashboard-span-7">
-          <SystemPanel label="Connected workflow" title="Showings, offers, transactions, and media">
+          <SystemPanel label="Related records" title="Listings, showings, offers, and transactions">
             {selectedDetail ? (
               <div className="insight-grid">
+                <article className="insight-card">
+                  <p className="section-label">Listings</p>
+                  <h3>{selectedDetail.listings.length}</h3>
+                  <p>{selectedDetail.listings[0] ? `${currency(selectedDetail.listings[0].listPrice)} · ${selectedDetail.listings[0].status.replace(/_/g, " ")}` : "No listing history yet."}</p>
+                </article>
                 <article className="insight-card">
                   <p className="section-label">Showings</p>
                   <h3>{selectedDetail.showings.length}</h3>
                   <p>{selectedDetail.showings[0]?.contact?.displayName ?? "No showings booked yet."}</p>
                 </article>
                 <article className="insight-card">
-                  <p className="section-label">Offers</p>
-                  <h3>{selectedDetail.offers.length}</h3>
-                  <p>{selectedDetail.offers[0] ? `${currency(selectedDetail.offers[0].offerPrice)} · ${selectedDetail.offers[0].status}` : "No offers submitted yet."}</p>
-                </article>
-                <article className="insight-card">
-                  <p className="section-label">Transactions</p>
-                  <h3>{selectedDetail.transaction ? selectedDetail.transaction.stage.replace(/_/g, " ") : "None"}</h3>
-                  <p>{selectedDetail.transaction?.closingDate ? `Closing ${selectedDetail.transaction.closingDate}` : "No active transaction."}</p>
+                  <p className="section-label">Offers / transactions</p>
+                  <h3>{selectedDetail.offers.length} / {selectedDetail.transactions.length}</h3>
+                  <p>{selectedDetail.transactions[0]?.closingDate ? `Latest close ${selectedDetail.transactions[0].closingDate}` : "No transaction history yet."}</p>
                 </article>
               </div>
             ) : (
@@ -347,7 +351,7 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
         </section>
 
         <section className="dashboard-span-12">
-          <SystemPanel label="Detail surfaces" title="Media, showings, offers, transaction, and activity">
+          <SystemPanel label="Detail surfaces" title="Property source of truth with connected listing history">
             {selectedDetail ? (
               <div className="dashboard-grid property-detail-grid">
                 <div className="dashboard-span-5">
@@ -355,6 +359,10 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
                 </div>
                 <div className="dashboard-span-7 section-stack compact-stack">
                   <div className="detail-grid">
+                    <div>
+                      <p className="section-label">Listing history</p>
+                      <strong>{selectedDetail.listings.length}</strong>
+                    </div>
                     <div>
                       <p className="section-label">Showings</p>
                       <strong>{selectedDetail.showings.length}</strong>
@@ -364,16 +372,19 @@ export function PropertiesWorkspace({ properties, detailsById }: PropertiesWorks
                       <strong>{selectedDetail.offers.length}</strong>
                     </div>
                     <div>
-                      <p className="section-label">Documents</p>
-                      <strong>{selectedDetail.documents.length}</strong>
-                    </div>
-                    <div>
-                      <p className="section-label">Transaction</p>
-                      <strong>{selectedDetail.transaction?.stage.replace(/_/g, " ") ?? "Not active"}</strong>
+                      <p className="section-label">Transactions</p>
+                      <strong>{selectedDetail.transactions[0]?.stage.replace(/_/g, " ") ?? "Not active"}</strong>
                     </div>
                   </div>
                   <div className="insight-grid property-mini-grid">
-                    {selectedDetail.showings.slice(0, 3).map((showing) => (
+                    {selectedDetail.listings.slice(0, 2).map((listing) => (
+                      <article key={listing.id} className="insight-card">
+                        <p className="section-label">Listing</p>
+                        <h3>{currency(listing.listPrice)}</h3>
+                        <p>{listing.status.replace(/_/g, " ")} · {listing.daysOnMarket} DOM</p>
+                      </article>
+                    ))}
+                    {selectedDetail.showings.slice(0, 2).map((showing) => (
                       <article key={showing.id} className="insight-card">
                         <p className="section-label">Showing</p>
                         <h3>{showing.contact?.displayName ?? "Client"}</h3>

@@ -12,7 +12,7 @@ import {
 import { runCopilotConversation } from "@/server/modules/ai/ai-copilot.service";
 import { fail, ok } from "@/server/shared/http";
 import { z } from "zod";
-import { copilotRequestSchema } from "@/server/modules/ai/ai.validation";
+import { copilotApiResponseSchema, copilotRequestSchema } from "@/server/modules/ai/ai.validation";
 
 const reviewSchema = z.object({
   approvalStatus: z.enum(["approved", "rejected"])
@@ -87,7 +87,7 @@ export async function handleUpdateAiArtifactAction(request: NextRequest, artifac
 export async function handleCopilotConversation(request: NextRequest) {
   try {
     const body = copilotRequestSchema.parse(await request.json());
-    const result = await runCopilotConversation(body);
+    const result = copilotApiResponseSchema.parse(await runCopilotConversation(body));
     return ok(result, { status: 201 });
   } catch (error) {
     return fail(error);

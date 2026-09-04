@@ -14,7 +14,8 @@ export async function listSeededListings() {
       property,
       seller,
       showingCount: showings.length,
-      offerCount: offers.length
+      offerCount: offers.length,
+      offerIds: offers.map((offer) => offer.id)
     };
   });
 }

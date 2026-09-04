@@ -9,6 +9,8 @@ type CopilotMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  title?: string;
+  basedOn?: string | null;
   linkedRecords?: Array<{
     id: string;
     entityType: string;
@@ -18,14 +20,35 @@ type CopilotMessage = {
   }>;
   followUpSuggestions?: string[];
   caution?: string | null;
+  pendingAction?: {
+    artifactId: string;
+    title: string;
+    message: string;
+    confirmLabel: string;
+    cancelLabel: string;
+  } | null;
+  actionArtifactId?: string | null;
 };
 
-const starterPrompts = [
-  "What's on my plate today?",
-  "Which leads need attention?",
-  "Show overdue tasks",
-  "Summarize my active deals"
-];
+function getStarterPrompts(pathname: string, entityType?: string | null) {
+  if (pathname.startsWith("/leads") || entityType === "lead") {
+    return ["Who needs attention?", "Show hot leads", "Analyze this lead"];
+  }
+
+  if (pathname.startsWith("/contacts") || entityType === "contact") {
+    return ["Summarize this contact", "What does this client want?", "Find matching properties"];
+  }
+
+  if (pathname.startsWith("/properties") || entityType === "property") {
+    return ["Find properties", "Find buyers for this property", "Summarize property"];
+  }
+
+  if (pathname.startsWith("/transactions") || entityType === "transaction") {
+    return ["What's the status?", "What's missing?", "Which deadline is next?"];
+  }
+
+  return ["What's important today?", "Show overdue tasks", "Summarize my pipeline"];
+}
 
 function createId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -40,6 +63,8 @@ export function FloatingCopilot() {
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<CopilotMessage[]>([]);
   const [retryMessage, setRetryMessage] = useState<string | null>(null);
+
+  const starterPrompts = useMemo(() => getStarterPrompts(pathname, pageContext.entityType), [pageContext.entityType, pathname]);
 
   const canSend = draft.trim().length > 0 && !loading;
 
@@ -91,16 +116,86 @@ export function FloatingCopilot() {
         {
           id: createId("assistant"),
           role: "assistant",
+          title: result.data.title,
           content: result.data.answer,
+          basedOn: result.data.basedOn ?? null,
           linkedRecords: result.data.linkedRecords ?? [],
           followUpSuggestions: result.data.followUpSuggestions ?? [],
-          caution: result.data.caution ?? null
+          caution: result.data.caution ?? null,
+          pendingAction: result.data.pendingAction ?? null,
+          actionArtifactId: result.data.actionArtifactId ?? null
         }
       ]);
       setDraft("");
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Unable to reach Kubes AI.");
       setMessages((current) => current.filter((message) => message.id !== userMessage.id));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function confirmAction(artifactId: string, decision: "confirm" | "cancel") {
+    const actionMessage: CopilotMessage = {
+      id: createId("user"),
+      role: "user",
+      content: decision === "confirm" ? "Confirm action" : "Cancel action",
+      actionArtifactId: artifactId
+    };
+
+    const nextMessages = [...messages, actionMessage];
+    setMessages(nextMessages);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/ai/copilot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMessages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            linkedRecords: message.linkedRecords,
+            actionArtifactId: message.actionArtifactId ?? null
+          })),
+          pageContext: {
+            pathname,
+            entityType: pageContext.entityType ?? null,
+            entityId: pageContext.entityId ?? null
+          },
+          actionConfirmation: {
+            artifactId,
+            decision
+          }
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error?.message ?? "Unable to complete Kubes AI action.");
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: createId("assistant"),
+          role: "assistant",
+          title: result.data.title,
+          content: result.data.answer,
+          basedOn: result.data.basedOn ?? null,
+          linkedRecords: result.data.linkedRecords ?? [],
+          followUpSuggestions: result.data.followUpSuggestions ?? [],
+          caution: result.data.caution ?? null,
+          pendingAction: null,
+          actionArtifactId: result.data.actionArtifactId ?? null
+        }
+      ]);
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "Unable to complete Kubes AI action.");
+      setMessages((current) => current.filter((message) => message.id !== actionMessage.id));
     } finally {
       setLoading(false);
     }
@@ -142,7 +237,9 @@ export function FloatingCopilot() {
               messages.map((message) => (
                 <article key={message.id} className={`copilot-message copilot-message-${message.role}`}>
                   <div className="copilot-message-body">
+                    {message.title ? <strong>{message.title}</strong> : null}
                     <p>{message.content}</p>
+                    {message.basedOn ? <p className="table-meta">{message.basedOn}</p> : null}
                     {message.caution ? <p className="table-meta">{message.caution}</p> : null}
                     {message.linkedRecords?.length ? (
                       <div className="copilot-records">
@@ -152,6 +249,16 @@ export function FloatingCopilot() {
                             <span>{record.meta}</span>
                           </a>
                         ))}
+                      </div>
+                    ) : null}
+                    {message.pendingAction ? (
+                      <div className="helper-row">
+                        <button type="button" className="button button-compact" onClick={() => void confirmAction(message.pendingAction!.artifactId, "confirm")} disabled={loading}>
+                          {message.pendingAction.confirmLabel}
+                        </button>
+                        <button type="button" className="button-secondary button-compact" onClick={() => void confirmAction(message.pendingAction!.artifactId, "cancel")} disabled={loading}>
+                          {message.pendingAction.cancelLabel}
+                        </button>
                       </div>
                     ) : null}
                     {message.followUpSuggestions?.length ? (

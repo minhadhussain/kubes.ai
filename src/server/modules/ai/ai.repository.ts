@@ -153,3 +153,19 @@ export async function updateAiArtifactActionStatus(artifactId: string, actionSta
     throw new AppError("Unable to update AI artifact action state.", 500, "AI_ARTIFACT_UPDATE_FAILED");
   }
 }
+
+export async function getAiArtifactDetail(artifactId: string) {
+  const supabase = await createSupabaseServerClient();
+
+  const { data, error } = await supabase
+    .from("ai_artifacts")
+    .select("id, organization_id, created_by, entity_type, entity_id, content, approval_status, action_status")
+    .eq("id", artifactId)
+    .single();
+
+  if (error || !data) {
+    throw new AppError("AI artifact not found.", 404, "AI_ARTIFACT_NOT_FOUND");
+  }
+
+  return data;
+}

@@ -10,6 +10,7 @@ test("seeded real-estate workflow keeps property relationships consistent", () =
   const listingIds = new Set(dataset.listings.map((listing) => listing.id));
   const offerIds = new Set(dataset.offers.map((offer) => offer.id));
   const transactionIds = new Set(dataset.transactions.map((transaction) => transaction.id));
+  const listingsByProperty = new Map<string, number>();
 
   assert.ok(dataset.properties.length >= 30);
   assert.ok(dataset.transactions.length >= 8);
@@ -17,7 +18,10 @@ test("seeded real-estate workflow keeps property relationships consistent", () =
   for (const listing of dataset.listings) {
     assert.ok(propertyIds.has(listing.propertyId));
     assert.ok(contactIds.has(listing.sellerContactId));
+    listingsByProperty.set(listing.propertyId, (listingsByProperty.get(listing.propertyId) ?? 0) + 1);
   }
+
+  assert.ok(Array.from(listingsByProperty.values()).some((count) => count > 1));
 
   for (const showing of dataset.showings) {
     assert.ok(propertyIds.has(showing.propertyId));

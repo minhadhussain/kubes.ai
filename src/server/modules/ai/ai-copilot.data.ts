@@ -294,15 +294,18 @@ async function loadPropertyEntity(_organizationId: string, entityId: string) {
     href: "/properties",
     detail: {
       property,
-      listing: property.listing,
-      transaction: property.transaction
+      latestListing: property.latestListing,
+      listingCount: property.listingCount,
+      currentMarketState: property.currentMarketState,
+      showingCount: property.showingCount,
+      offerCount: property.offerCount
     },
     reference: {
       id: property.id,
       entityType: "property",
       label: `${property.addressLine1}, ${property.city}`,
       href: "/properties",
-      meta: property.listingStatus
+      meta: `${property.propertyType} · ${property.currentMarketState === "on_market" ? "on market" : "off market"}`
     } satisfies CopilotReference
   };
 }
@@ -510,7 +513,21 @@ async function loadPropertiesDataset(_organizationId: string) {
 
   return {
     total: data.length,
-    items: data.slice(0, 12)
+    items: data.slice(0, 12).map((property) => ({
+      id: property.id,
+      title: property.title,
+      addressLine1: property.addressLine1,
+      city: property.city,
+      locality: property.locality,
+      propertyType: property.propertyType,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      areaSqft: property.areaSqft,
+      listingCount: property.listingCount,
+      activeListingCount: property.activeListingCount,
+      currentMarketState: property.currentMarketState,
+      latestListingStatus: property.latestListingStatus
+    }))
   };
 }
 

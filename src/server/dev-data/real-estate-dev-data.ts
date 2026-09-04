@@ -390,15 +390,15 @@ function buildProperties() {
 
 function buildListings(properties: DevProperty[], contacts: DevContact[]) {
   const sellerContacts = contacts.filter((contact) => contact.contactTypes.includes("seller"));
+  const historicalStatuses = ["sold", "expired"] as const;
 
-  return properties
+  const listings = properties
     .filter((property) => property.listingStatus !== "unlisted")
     .slice(0, 28)
-    .map((property, index) => {
+    .flatMap((property, index) => {
       const seller = sellerContacts[index % sellerContacts.length];
       const status = property.listingStatus === "unlisted" ? "draft" : property.listingStatus;
-
-      return {
+      const primaryListing = {
         id: id("listing", index),
         propertyId: property.id,
         sellerContactId: seller.id,
@@ -410,7 +410,29 @@ function buildListings(properties: DevProperty[], contacts: DevContact[]) {
         expiresAt: isoFrom(45 + (index % 20), 18, 0),
         description: `Marketed ${property.propertyType} in ${property.locality} with strong family and investor demand.`
       } satisfies DevListing;
+
+      if (index % 7 !== 0) {
+        return [primaryListing];
+      }
+
+      const historicalStatus = historicalStatuses[index % historicalStatuses.length];
+      const historicalListing = {
+        id: `listing-history-${index + 1}`,
+        propertyId: property.id,
+        sellerContactId: seller.id,
+        status: historicalStatus,
+        listingType: "sale",
+        listPrice: Math.round(property.price * (1.03 + (index % 3) * 0.01)),
+        daysOnMarket: 22 + (index % 18),
+        publishedAt: isoFrom(-(index % 20) - 70, 9, 0),
+        expiresAt: isoFrom(-(index % 20) - 35, 18, 0),
+        description: `Previous marketing cycle for ${property.title} before the current listing strategy.`
+      } satisfies DevListing;
+
+      return [primaryListing, historicalListing];
     });
+
+  return listings;
 }
 
 function buildShowings(properties: DevProperty[], listings: DevListing[], contacts: DevContact[]) {

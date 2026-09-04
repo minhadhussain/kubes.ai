@@ -99,7 +99,7 @@ export function TransactionsWorkspace({ transactions }: TransactionsWorkspacePro
       </div>
 
       <div className="dashboard-grid">
-        <section className="dashboard-span-7">
+        <section className="dashboard-span-12">
           <SystemPanel label="Deal board" title="Transactions by stage">
             <DataTable
               columns={[
@@ -123,7 +123,7 @@ export function TransactionsWorkspace({ transactions }: TransactionsWorkspacePro
           </SystemPanel>
         </section>
 
-        <section className="dashboard-span-5">
+        <section className="dashboard-span-12">
           <SystemPanel label="Transaction detail" title={selected?.property?.title ?? "Select a transaction"} grid>
             {selected ? (
               <div className="section-stack compact-stack">
