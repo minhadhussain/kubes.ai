@@ -1,0 +1,14 @@
+grant usage on schema public to authenticated;
+grant select on public.roles to authenticated;
+grant select, insert, update on public.organizations to authenticated;
+grant select, insert, update on public.organization_members to authenticated;
+grant select, insert, update on public.user_profiles to authenticated;
+grant select, insert, update on public.ai_runs to authenticated;
+grant select, insert, update on public.ai_artifacts to authenticated;
+grant usage on schema public to service_role;
+grant select on public.roles to service_role;
+grant select, insert, update on public.organizations to service_role;
+grant select, insert, update on public.organization_members to service_role;
+grant select, insert, update on public.user_profiles to service_role;
+grant select, insert, update on public.ai_runs to service_role;
+grant select, insert, update on public.ai_artifacts to service_role;

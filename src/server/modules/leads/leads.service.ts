@@ -1,3 +1,4 @@
+import { getRealEstateDevData } from "@/server/dev-data/real-estate-dev-data";
 import { requireCurrentOrganizationContext } from "@/server/shared/organization";
 import { AppError } from "@/server/shared/errors";
 
@@ -29,110 +30,186 @@ type CreateLeadNoteInput = {
   activityType: "note" | "call" | "email" | "message";
 };
 
-export async function listLeads() {
-  const { supabase, organizationId } = await requireCurrentOrganizationContext();
+function getMockLeads() {
+  const dataset = getRealEstateDevData();
+  const contactsById = new Map(dataset.contacts.map((contact) => [contact.id, contact]));
 
-  const [{ data: leads, error: leadError }, { data: contacts, error: contactError }, { data: tasks, error: taskError }, { data: notes, error: notesError }, { data: artifacts, error: artifactsError }] =
-    await Promise.all([
-      supabase
-        .from("leads")
-        .select("id, contact_id, stage, disposition, score, source, notes, next_follow_up_at, created_at")
-        .eq("organization_id", organizationId)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("contacts")
-        .select("id, display_name, email, phone, budget, location_requirements, timeline, lead_source, last_contacted_at, next_follow_up_at")
-        .eq("organization_id", organizationId),
-      supabase
-        .from("tasks")
-        .select("id, title, status, due_at, related_entity_id")
-        .eq("organization_id", organizationId)
-        .eq("related_entity_type", "lead")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("activities")
-        .select("id, entity_id, activity_type, title, body, occurred_at")
-        .eq("organization_id", organizationId)
-        .eq("entity_type", "lead")
-        .order("occurred_at", { ascending: false }),
-      supabase
-        .from("ai_artifacts")
-        .select("id, artifact_type, entity_id, summary, content, confidence, approval_status, action_status, created_at")
-        .eq("organization_id", organizationId)
-        .in("artifact_type", ["lead_qualification", "activity_summary", "follow_up_draft"])
-        .eq("entity_type", "lead")
-        .order("created_at", { ascending: false })
-    ]);
-
-  if (leadError || contactError || taskError || notesError || artifactsError) {
-    throw new AppError("Unable to load leads workspace.", 500, "LEADS_LOAD_FAILED");
-  }
-
-  const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
-
-  const tasksByLead = new Map<string, Array<(typeof tasks)[number]>>();
-  for (const task of tasks ?? []) {
-    const key = task.related_entity_id;
-    if (!key) {
+  const tasksByLead = new Map<string, Array<{ id: string; title: string; status: string; due_at: string | null }>>();
+  for (const task of dataset.tasks) {
+    if (task.relatedEntityType !== "lead" || !task.relatedEntityId) {
       continue;
     }
 
-    const existing = tasksByLead.get(key) ?? [];
-    existing.push(task);
-    tasksByLead.set(key, existing);
+    const existing = tasksByLead.get(task.relatedEntityId) ?? [];
+    existing.push({
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      due_at: task.dueAt
+    });
+    tasksByLead.set(task.relatedEntityId, existing);
   }
 
-  const notesByLead = new Map<string, Array<(typeof notes)[number]>>();
-  for (const note of notes ?? []) {
-    const existing = notesByLead.get(note.entity_id) ?? [];
-    existing.push(note);
-    notesByLead.set(note.entity_id, existing);
-  }
-
-  const aiByLead = new Map<string, Array<(typeof artifacts)[number]>>();
-  for (const artifact of artifacts ?? []) {
-    if (!artifact.entity_id) {
+  const activitiesByLead = new Map<string, Array<{ id: string; activity_type: string; title: string; body: string | null; occurred_at: string }>>();
+  for (const activity of dataset.activities) {
+    if (activity.entityType !== "lead") {
       continue;
     }
 
-    const existing = aiByLead.get(artifact.entity_id) ?? [];
-    existing.push(artifact);
-    aiByLead.set(artifact.entity_id, existing);
+    const existing = activitiesByLead.get(activity.entityId) ?? [];
+    existing.push({
+      id: activity.id,
+      activity_type: activity.activityType,
+      title: activity.title,
+      body: activity.body,
+      occurred_at: activity.occurredAt
+    });
+    activitiesByLead.set(activity.entityId, existing);
   }
 
-  return (leads ?? []).map((lead) => ({
-    id: lead.id,
-    stage: lead.stage,
-    disposition: lead.disposition,
-    score: lead.score,
-    source: lead.source,
-    notes: lead.notes,
-    nextFollowUpAt: lead.next_follow_up_at,
-    createdAt: lead.created_at,
-    contact: (() => {
-      const contact = contactsById.get(lead.contact_id);
+  return dataset.leads.map((lead) => {
+    const contact = contactsById.get(lead.contactId);
 
-      if (!contact) {
-        throw new AppError("Lead contact is missing.", 500, "LEAD_CONTACT_MISSING");
-      }
+    if (!contact) {
+      throw new AppError("Mock lead contact is missing.", 500, "MOCK_LEAD_CONTACT_MISSING");
+    }
 
-      return {
+    return {
+      id: lead.id,
+      stage: lead.stage,
+      disposition: lead.disposition,
+      score: lead.score,
+      source: lead.source,
+      notes: lead.notes,
+      nextFollowUpAt: lead.nextFollowUpAt,
+      createdAt: lead.createdAt,
+      contact: {
         id: contact.id,
-        displayName: contact.display_name,
+        displayName: contact.displayName,
         email: contact.email,
         phone: contact.phone,
         budget: contact.budget,
-        locationRequirements: contact.location_requirements,
+        locationRequirements: contact.locationRequirements,
         timeline: contact.timeline,
-        leadSource: contact.lead_source,
-        lastContactedAt: contact.last_contacted_at,
-        nextFollowUpAt: contact.next_follow_up_at
-      };
-    })(),
-    tasks: tasksByLead.get(lead.id) ?? [],
-    activities: notesByLead.get(lead.id) ?? [],
-    aiArtifacts: aiByLead.get(lead.id) ?? []
-  }));
+        leadSource: contact.leadSource,
+        lastContactedAt: contact.lastContactedAt,
+        nextFollowUpAt: contact.nextFollowUpAt
+      },
+      tasks: tasksByLead.get(lead.id) ?? [],
+      activities: activitiesByLead.get(lead.id) ?? [],
+      aiArtifacts: []
+    };
+  });
+}
+
+export async function listLeads() {
+  try {
+    const { supabase, organizationId } = await requireCurrentOrganizationContext();
+
+    const [{ data: leads, error: leadError }, { data: contacts, error: contactError }, { data: tasks, error: taskError }, { data: notes, error: notesError }, { data: artifacts, error: artifactsError }] =
+      await Promise.all([
+        supabase
+          .from("leads")
+          .select("id, contact_id, stage, disposition, score, source, notes, next_follow_up_at, created_at")
+          .eq("organization_id", organizationId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("contacts")
+          .select("id, display_name, email, phone, budget, location_requirements, timeline, lead_source, last_contacted_at, next_follow_up_at")
+          .eq("organization_id", organizationId),
+        supabase
+          .from("tasks")
+          .select("id, title, status, due_at, related_entity_id")
+          .eq("organization_id", organizationId)
+          .eq("related_entity_type", "lead")
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("activities")
+          .select("id, entity_id, activity_type, title, body, occurred_at")
+          .eq("organization_id", organizationId)
+          .eq("entity_type", "lead")
+          .order("occurred_at", { ascending: false }),
+        supabase
+          .from("ai_artifacts")
+          .select("id, artifact_type, entity_id, summary, content, confidence, approval_status, action_status, created_at")
+          .eq("organization_id", organizationId)
+          .in("artifact_type", ["lead_qualification", "activity_summary", "follow_up_draft"])
+          .eq("entity_type", "lead")
+          .order("created_at", { ascending: false })
+      ]);
+
+    if (leadError || contactError || taskError || notesError || artifactsError) {
+      throw new AppError("Unable to load leads workspace.", 500, "LEADS_LOAD_FAILED");
+    }
+
+    const contactsById = new Map((contacts ?? []).map((contact) => [contact.id, contact]));
+
+    const tasksByLead = new Map<string, Array<(typeof tasks)[number]>>();
+    for (const task of tasks ?? []) {
+      const key = task.related_entity_id;
+      if (!key) {
+        continue;
+      }
+
+      const existing = tasksByLead.get(key) ?? [];
+      existing.push(task);
+      tasksByLead.set(key, existing);
+    }
+
+    const notesByLead = new Map<string, Array<(typeof notes)[number]>>();
+    for (const note of notes ?? []) {
+      const existing = notesByLead.get(note.entity_id) ?? [];
+      existing.push(note);
+      notesByLead.set(note.entity_id, existing);
+    }
+
+    const aiByLead = new Map<string, Array<(typeof artifacts)[number]>>();
+    for (const artifact of artifacts ?? []) {
+      if (!artifact.entity_id) {
+        continue;
+      }
+
+      const existing = aiByLead.get(artifact.entity_id) ?? [];
+      existing.push(artifact);
+      aiByLead.set(artifact.entity_id, existing);
+    }
+
+    return (leads ?? []).map((lead) => ({
+      id: lead.id,
+      stage: lead.stage,
+      disposition: lead.disposition,
+      score: lead.score,
+      source: lead.source,
+      notes: lead.notes,
+      nextFollowUpAt: lead.next_follow_up_at,
+      createdAt: lead.created_at,
+      contact: (() => {
+        const contact = contactsById.get(lead.contact_id);
+
+        if (!contact) {
+          throw new AppError("Lead contact is missing.", 500, "LEAD_CONTACT_MISSING");
+        }
+
+        return {
+          id: contact.id,
+          displayName: contact.display_name,
+          email: contact.email,
+          phone: contact.phone,
+          budget: contact.budget,
+          locationRequirements: contact.location_requirements,
+          timeline: contact.timeline,
+          leadSource: contact.lead_source,
+          lastContactedAt: contact.last_contacted_at,
+          nextFollowUpAt: contact.next_follow_up_at
+        };
+      })(),
+      tasks: tasksByLead.get(lead.id) ?? [],
+      activities: notesByLead.get(lead.id) ?? [],
+      aiArtifacts: aiByLead.get(lead.id) ?? []
+    }));
+  } catch {
+    return getMockLeads();
+  }
 }
 
 export async function createLead(input: CreateLeadInput) {

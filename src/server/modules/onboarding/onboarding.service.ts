@@ -39,15 +39,30 @@ const WORKSPACE_ROLE_SEED = [
 ] as const;
 
 async function getOwnerRoleId() {
-  const supabase = await createSupabaseServerClient();
+  const adminClient = createSupabaseAdminClient();
 
-  const { data: ownerRole } = await supabase.from("roles").select("id").eq("key", "owner").maybeSingle();
+  if (adminClient) {
+    const { data: ownerRole, error: ownerRoleError } = await adminClient.from("roles").select("id").eq("key", "owner").maybeSingle();
+
+    if (ownerRoleError) {
+      throw new AppError(`Unable to verify workspace roles: ${ownerRoleError.message}`, 500, "ROLE_LOOKUP_FAILED");
+    }
+
+    if (ownerRole) {
+      return ownerRole.id;
+    }
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data: ownerRole, error: ownerRoleError } = await supabase.from("roles").select("id").eq("key", "owner").maybeSingle();
+
+  if (ownerRoleError) {
+    throw new AppError(`Unable to verify workspace roles: ${ownerRoleError.message}`, 500, "ROLE_LOOKUP_FAILED");
+  }
 
   if (ownerRole) {
     return ownerRole.id;
   }
-
-  const adminClient = createSupabaseAdminClient();
 
   if (!adminClient) {
     throw new AppError(
@@ -70,15 +85,15 @@ async function getOwnerRoleId() {
     );
   }
 
-  const { data: seededOwnerRole, error: seededOwnerRoleError } = await supabase
+  const { data: seededOwnerRole, error: seededOwnerRoleError } = await adminClient
     .from("roles")
     .select("id")
     .eq("key", "owner")
-    .single();
+    .maybeSingle();
 
   if (seededOwnerRoleError || !seededOwnerRole) {
     throw new AppError(
-      "Workspace roles were seeded, but the owner role is still unavailable to the current session. Refresh and try again.",
+      "Workspace roles were seeded, but the owner role is still unavailable. Verify that the roles table contains the owner role and try again.",
       500,
       "ROLE_LOOKUP_FAILED"
     );
@@ -87,9 +102,24 @@ async function getOwnerRoleId() {
   return seededOwnerRole.id;
 }
 
+function requireSupabaseAdminClient() {
+  const adminClient = createSupabaseAdminClient();
+
+  if (!adminClient) {
+    throw new AppError(
+      "Workspace setup requires SUPABASE_SERVICE_ROLE_KEY on the server. Add it to .env.local and restart the app.",
+      500,
+      "SUPABASE_ADMIN_REQUIRED"
+    );
+  }
+
+  return adminClient;
+}
+
 export async function createOrganization(input: { name: string; workspaceType: WorkspaceType }) {
   const user = await requireCurrentUser();
   const supabase = await createSupabaseServerClient();
+  const onboardingClient = requireSupabaseAdminClient();
 
   const { data: existingMembership } = await supabase
     .from("organization_members")
@@ -104,7 +134,7 @@ export async function createOrganization(input: { name: string; workspaceType: W
 
   const ownerRoleId = await getOwnerRoleId();
 
-  const { data: slugData, error: slugError } = await supabase.rpc("ensure_unique_organization_slug", {
+  const { data: slugData, error: slugError } = await onboardingClient.rpc("ensure_unique_organization_slug", {
     base_name: input.name
   });
 
@@ -112,7 +142,7 @@ export async function createOrganization(input: { name: string; workspaceType: W
     throw new AppError("Unable to generate organization slug.", 500, "SLUG_GENERATION_FAILED");
   }
 
-  const { data: organization, error: organizationError } = await supabase
+  const { data: organization, error: organizationError } = await onboardingClient
     .from("organizations")
     .insert({
       name: input.name,
@@ -127,7 +157,7 @@ export async function createOrganization(input: { name: string; workspaceType: W
     throw new AppError(organizationError?.message ?? "Unable to create organization.", 400, "ORGANIZATION_CREATE_FAILED");
   }
 
-  const { error: memberError } = await supabase.from("organization_members").insert({
+  const { error: memberError } = await onboardingClient.from("organization_members").insert({
     organization_id: organization.id,
     user_id: user.id,
     role_id: ownerRoleId,
@@ -138,7 +168,7 @@ export async function createOrganization(input: { name: string; workspaceType: W
     throw new AppError(memberError.message, 400, "MEMBERSHIP_CREATE_FAILED");
   }
 
-  const { error: profileError } = await supabase
+  const { error: profileError } = await onboardingClient
     .from("user_profiles")
     .update({ default_organization_id: organization.id })
     .eq("id", user.id);

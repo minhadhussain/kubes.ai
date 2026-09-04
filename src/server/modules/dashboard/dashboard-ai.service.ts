@@ -1,7 +1,18 @@
+import { AppError } from "@/server/shared/errors";
 import { listLatestNextActionArtifact } from "@/server/modules/ai/ai.service";
 
 export async function getDashboardAiSnapshot() {
-  const artifact = await listLatestNextActionArtifact();
+  let artifact = null;
+
+  try {
+    artifact = await listLatestNextActionArtifact();
+  } catch (error) {
+    if (error instanceof AppError && error.code === "AI_NEXT_ACTIONS_LOAD_FAILED") {
+      return null;
+    }
+
+    throw error;
+  }
 
   if (!artifact) {
     return null;
